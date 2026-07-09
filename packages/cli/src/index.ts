@@ -111,15 +111,34 @@ async function init(projectRoot: string): Promise<void> {
 
 async function doctor(projectRoot: string): Promise<void> {
   const config = await loadConfig(projectRoot);
-  console.log("Checking configured model seats…\n");
+  console.log("Checking configured models…\n");
   const checks = await doctorReport(config);
+  const ok = new Map(checks.map((c) => [c.id, c.ok]));
   for (const c of checks) {
     const mark = c.ok ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
     const exec = c.canExecute ? " \x1b[2m(can execute)\x1b[0m" : "";
     console.log(`  ${mark} ${c.id}${exec}\n      ${c.detail}`);
   }
-  const ready = checks.filter((c) => c.ok).length;
-  console.log(`\n${ready}/${checks.length} seats ready.` + (ready < 2 ? "  You need at least 2 for a roundtable." : "  Run:  quorum start \"<your goal>\""));
+
+  // A seat is "fillable" if any model in its failover chain is reachable.
+  const seats = Object.entries(config.seats);
+  const fillable = seats.filter(([, s]) => s.chain.some((m) => ok.get(m)));
+  const canExecute = checks.some((c) => c.ok && c.canExecute);
+
+  console.log(`\n\x1b[1mSeats\x1b[0m (${seats.length}):`);
+  for (const [name, s] of seats) {
+    const first = s.chain.find((m) => ok.get(m));
+    const mark = first ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
+    console.log(`  ${mark} ${name.padEnd(9)} → ${first ?? "no reachable model in chain"}`);
+  }
+
+  console.log("");
+  if (fillable.length < 2) {
+    console.log(`Only ${fillable.length}/${seats.length} seats can be filled — you need at least 2. Add a reachable model to a seat's chain (see .quorum/config.yaml) or run \`quorum init\`.`);
+  } else {
+    console.log(`${fillable.length}/${seats.length} seats ready.` + (canExecute ? "" : " No executor model (claude/codex) — you can plan but not build; add one to enable autonomous building."));
+    console.log(`Run:  quorum start "<your goal>"`);
+  }
 }
 
 async function start(projectRoot: string, goal: string): Promise<void> {
