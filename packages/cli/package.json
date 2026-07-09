@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@quorum/adapters": "workspace:*",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "yaml": "^2.6.1"
   }
 }

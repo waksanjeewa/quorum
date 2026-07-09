@@ -48,13 +48,18 @@ codex login       # for a `codex` seat (ChatGPT Plus/Pro)
 # optional: ollama serve                    for a free local fallback
 ```
 
-**Then:**
+**Then just run `quorum`** — it drops you into an interactive shell (no config files to edit):
 
-```bash
-quorum init                       # scaffold .quorum/config.yaml
-quorum doctor                     # see which seats are ready
-quorum start "build me a CLI that converts CSV to JSON"
 ```
+$ quorum
+  quorum› /models          ← pick your models: log in, or paste an API key (saved to your Keychain)
+  quorum› build me a CLI that converts CSV to JSON
+  … streams live — type to add a message, /pause, /stop …
+  quorum› /help            ← /models /doctor /status /pause /resume /stop /config /exit
+```
+
+Prefer one-shot commands? `quorum setup` (pick models), `quorum doctor` (check readiness),
+`quorum start "<goal>"` (run once) all work too.
 
 In a **git repo**, `start` runs the whole thing autonomously — the models deliberate, converge on a
 plan, then an executor builds it in an isolated worktree, verifies it, and merges. In a non-git

@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 import { writeFile, mkdir, access } from "node:fs/promises";
+import { createInterface } from "node:readline";
 import { join } from "node:path";
 import { QuorumHttpServer, loadConfig, doctorReport, DEFAULT_CONFIG_YAML } from "@quorum/daemon";
 import { renderDashboard } from "@quorum/dashboard";
 import { requireClient } from "./client.js";
 import { control, inject, listSessions, statusOf, streamEvents } from "./commands.js";
 import { formatEvent } from "./format.js";
+import { repl } from "./repl.js";
+import { runSetup } from "./setup.js";
+import { resolveSecretsEnv } from "./keychain.js";
 
 const HELP = `Quorum — multiple AI models collaborate on one goal.
 
 Usage:
+  quorum                    Enter the interactive shell (recommended)
+  quorum setup              Pick your models (login or paste an API key)
   quorum init               Scaffold a starter .quorum/config.yaml here
   quorum doctor             Check which model seats are logged in / reachable
   quorum start "<goal>"     Deliberate → plan → build (autonomous; needs a git repo to execute)
@@ -24,9 +30,18 @@ async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
   const projectRoot = process.cwd();
 
+  if (!cmd) return repl(projectRoot); // no args → interactive shell
+
   switch (cmd) {
     case "init":
       return init(projectRoot);
+    case "setup":
+    case "models": {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      await runSetup(projectRoot, rl);
+      rl.close();
+      return;
+    }
     case "doctor":
       return doctor(projectRoot);
     case "start":
@@ -142,9 +157,10 @@ async function doctor(projectRoot: string): Promise<void> {
 }
 
 async function start(projectRoot: string, goal: string): Promise<void> {
-  const server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true });
-  const info = await server.listen();
   const config = await loadConfig(projectRoot);
+  const env = await resolveSecretsEnv(Object.values(config.providers).map((p) => p.keyEnv));
+  const server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
+  const info = await server.listen();
   const running = await server.daemon.createSession(goal, config);
 
   console.log(`\n  Quorum session \x1b[1m${running.id}\x1b[0m started`);
