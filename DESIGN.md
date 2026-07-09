@@ -266,3 +266,51 @@ The design holds; Codex is fully drivable headlessly, and there's an even better
 3. **Pass-through asymmetry (§10):** Claude Code supports invoking user-defined slash commands/skills headlessly by embedding them in the prompt; Codex custom prompts are interactive-only/deprecated, so its "pass-through" is us templating prompt text. The `/agent <seat> /<command>` feature is therefore native for Claude seats and emulated for Codex seats — same UX either way.
 
 Remaining unverified items (acceptable risk, resolve during build): exact exit codes / JSON error schemas on quota-exceeded for both CLIs; hook & subagent config in raw Claude CLI `-p`; Codex SDK streaming signatures.
+
+## 13. Phase 2 — The Workshop (execution design)
+
+*Status: agreed 2026-07-09 (worktree isolation, serial task-then-review). Phase 1 shipped + smoke-tested; this is the next chapter. Task ledger: `tasks/2xx-*.md`.*
+
+Phase 1 gets models to agree on a plan (`spec.md` + `tasks/`). The **Workshop** executes that ledger: models stop talking and start *doing* — editing files, running commands — with the same "no agent ever owns the task" and human-in-the-loop principles.
+
+### 13.1 Execution loop (serial: one task, then review)
+
+For each runtime task in the session's `tasks/` dir whose `deps` are `done`, lowest id first:
+
+```
+1. ASSIGN   pick an executor seat (a model with file/exec tools: claude, codex)
+2. ISOLATE  create a git worktree + branch for this task (isolation choice: worktree-per-agent)
+3. EXECUTE  the executor works ONLY within the task's owned_paths, in its worktree
+4. VERIFY   run the task's acceptance commands; capture pass/fail + output
+5. REVIEW   a roundtable REVIEW stage critiques the diff (proposer defends, critic hunts bugs,
+            arbiter decides merge/iterate/block)
+6. RESOLVE  approved → merge the branch, mark task done; else iterate (back to 3) or block
+```
+
+The human can inject at any turn (same mechanism as Phase 1), and STOP tears everything down including any running executor process and its worktree.
+
+### 13.2 New components (layered on Phase 1, not replacing it)
+
+- **Workspace manager** (`@quorum/core`): git worktree lifecycle — `createWorktree(task)`, `listWorktrees()`, `mergeWorktree(task)`, `removeWorktree(task)`. Requires the target project be a git repo (offer `git init` if not). Worktrees live under `.quorum/worktrees/<task-id>/`; auto-removed when merged or on cleanup.
+- **Executor capability** (`@quorum/adapters`): today's Claude/Codex adapters run with tools **disabled** (deliberation only). Phase 2 adds an *execute mode*: tools enabled, `sandboxMode: workspace-write`, `workingDirectory` = the task's worktree. `ModelAdapter.capabilities().canExecute` gates which seats can be executors. (Ollama/small HTTP models stay deliberation-only.)
+- **Acceptance runner** (`@quorum/core`): runs a task's `acceptance` commands as child processes in the worktree, captures exit code + stdout/stderr, returns a structured pass/fail. This is the objective gate before review.
+- **Execute stage** (engine): a new `Stage` handler that drives the loop above, emitting new transcript events (`task_start`, `task_result`, `merge`) so the dashboard/CLI show execution progress live.
+
+### 13.3 Contracts & safety
+
+- **Never touch paths outside `owned_paths`.** The executor's worktree is its sandbox; the merge step refuses changes outside the declared paths (defense in depth).
+- **No pushes/deploys without human approval** (DESIGN §7). Merges are local to the user's repo; nothing leaves the machine.
+- **Verification is objective first, subjective second:** acceptance commands must pass before the roundtable review even runs. Green tests are necessary, not sufficient — the review can still block.
+- **Failover still applies:** if an executor hits its usage limit mid-task, the worktree + task state persist on disk; the next model in the chain resumes the same task in the same worktree. No agent ever owns the task.
+
+### 13.4 Phase 2 task ledger (2xx)
+
+| Task | Scope |
+|------|-------|
+| 200 | Workspace manager — git worktree lifecycle |
+| 210 | Executor adapter mode — tools-enabled execute for claude/codex, `canExecute` capability |
+| 220 | Acceptance runner — run task acceptance commands in a worktree, capture result |
+| 230 | Execute stage — the assign→isolate→execute→verify→review→resolve loop in the engine |
+| 240 | Phase 2 e2e — plan → execute one task → verify → merge, with MockAdapters + a real-repo smoke |
+
+Phase 2 is done when a session can take a goal → converge on a plan → **execute one task end-to-end** (isolated worktree, acceptance passing, reviewed, merged) — surviving a usage-limit handoff mid-task.
