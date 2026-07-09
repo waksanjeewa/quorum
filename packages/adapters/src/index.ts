@@ -13,3 +13,8 @@ export {
 } from "./types.js";
 export { MockAdapter, type MockAdapterOpts, type MockStep } from "./mock/mock-adapter.js";
 export { SeatManager, type AdapterRegistry, type SeatManagerOpts } from "./seat-manager.js";
+export { renderContext, type RenderedPrompt } from "./shared/render.js";
+export { OllamaAdapter, type OllamaAdapterOpts } from "./ollama/ollama-adapter.js";
+export { HttpAdapter, type HttpAdapterOpts } from "./http/http-adapter.js";
+export { resolveHttpAdapter, DIRECT_PROVIDERS, type ResolveHttpOpts } from "./http/presets.js";
+export { estimateCostUsd, priceFor } from "./http/prices.js";
