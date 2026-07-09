@@ -18,3 +18,6 @@ export { OllamaAdapter, type OllamaAdapterOpts } from "./ollama/ollama-adapter.j
 export { HttpAdapter, type HttpAdapterOpts } from "./http/http-adapter.js";
 export { resolveHttpAdapter, DIRECT_PROVIDERS, type ResolveHttpOpts } from "./http/presets.js";
 export { estimateCostUsd, priceFor } from "./http/prices.js";
+export { SdkAdapter, type ChatClient, type SdkAdapterOpts } from "./sdk/chat-client.js";
+export { createClaudeAdapter, type ClaudeAdapterOpts } from "./claude/claude-adapter.js";
+export { createCodexAdapter, type CodexAdapterOpts } from "./codex/codex-adapter.js";
