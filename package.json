@@ -15,6 +15,9 @@
     "clean": "pnpm -r exec rm -rf dist tsconfig.tsbuildinfo && rm -rf node_modules/.cache"
   },
   "devDependencies": {
+    "@quorum/adapters": "workspace:*",
+    "@quorum/core": "workspace:*",
+    "@quorum/daemon": "workspace:*",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

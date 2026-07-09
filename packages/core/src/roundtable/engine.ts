@@ -81,6 +81,8 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
   const paused = new Set<SeatId>();
   const completed: Stage[] = [];
   const notes: string[] = [];
+  /** Human messages already surfaced to a turn — robust to injections landing mid-turn. */
+  let addressedHumans = 0;
 
   const emit = async (e: TranscriptEvent): Promise<void> => {
     await appendEvent(dir, e);
@@ -112,6 +114,7 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
         role,
         roleInstructions: "",
         contextMode: config.contextMode,
+        addressedHumanCount: addressedHumans,
       });
       const ctx: TurnContext = { ...base, roleInstructions: instr(role, base) };
 
@@ -124,6 +127,9 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
       }
 
       if (result.status === "ok") {
+        // Mark the injections this turn saw as addressed (only those surfaced at context-build time,
+        // so an injection arriving mid-turn stays pending for the next turn).
+        addressedHumans += ctx.pendingInjections.length;
         const move = result.move ?? parseMove(result.content);
         await emit({
           ts: ts(),

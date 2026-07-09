@@ -10,6 +10,12 @@ export interface BuildTurnContextOpts {
   contextMode?: "full" | "summary_tail";
   /** How many recent events to include in summary_tail mode. Default 10. */
   tailSize?: number;
+  /**
+   * Count of human messages already surfaced to a prior turn. When provided, pending injections are
+   * ALL human events beyond this count (robust to an injection landing mid-turn). When omitted,
+   * falls back to the positional "after the last turn" heuristic.
+   */
+  addressedHumanCount?: number;
 }
 
 /** The stage in effect after applying all stage-change events (default: brainstorm). */
@@ -49,6 +55,10 @@ export async function buildTurnContext(dir: string, opts: BuildTurnContextOpts):
   const tail = opts.tailSize ?? 10;
   const [goal, summary, events] = await Promise.all([readGoal(dir), readSummary(dir), readEvents(dir)]);
   const recentTurns = mode === "full" ? events : events.slice(-tail);
+  const pending =
+    opts.addressedHumanCount !== undefined
+      ? events.filter((e) => e.type === "human").slice(opts.addressedHumanCount).map((e) => (e as { content: string }).content)
+      : pendingInjections(events);
   return {
     seat: opts.seat,
     role: opts.role,
@@ -57,7 +67,7 @@ export async function buildTurnContext(dir: string, opts: BuildTurnContextOpts):
     goal,
     summary,
     recentTurns,
-    pendingInjections: pendingInjections(events),
+    pendingInjections: pending,
     roleInstructions: opts.roleInstructions,
   };
 }
