@@ -13,6 +13,7 @@ Node 25, Ollama 0.30.11, codex-cli 0.132.0 + @openai/codex-sdk 0.143.0, claude-c
 | **Codex SDK adapter** | Real turn via `@openai/codex-sdk`, `auth()` reused `~/.codex` login, SDK shape (`finalResponse`, `thread.id`) matched the adapter ✓ |
 | **Full convergence on Codex** | 2 Codex seats **converged brainstorm→plan**, wrote real `spec.md` + `ideas.md` recommending Python with a browser-first caveat ✓ |
 | **Generic HTTP adapter (OpenRouter)** | Real free-model turn (`poolside/laguna-xs-2.1:free`) → `ok`, content parsed, **cost=$0** ✓; 429 correctly mapped to `usage_limit` ✓ |
+| **Claude SDK adapter** | Real turn via `@anthropic-ai/claude-agent-sdk` reusing the subscription login ✓ (see env note below) |
 | **Live cross-provider failover** | `quorum start` with `[openrouter/…:free, ollama/…]` chains: OpenRouter rate-limited mid-run → seats **failed over to local Ollama** and kept going (`seat_change reason=usage_limit`) — the session never died ✓ |
 
 ## 🐛 Bugs found & fixed during smoke
@@ -24,10 +25,11 @@ Node 25, Ollama 0.30.11, codex-cli 0.132.0 + @openai/codex-sdk 0.143.0, claude-c
 
 ## ⚠️ Known limitations / not verified here
 
-- **Claude adapter not verifiable in this environment.** These smoke runs executed *inside* a Claude
-  Code session (`CLAUDECODE=1`), whose `ANTHROPIC_BASE_URL` routing makes a nested headless `claude`
-  return 401. A normal terminal login is unaffected — **verify the Claude seat from a plain terminal**
-  (`CLAUDE_TEST=1`): confirm the Agent SDK `query()` message shapes (assistant text / `result` / `session_id`).
+- **Claude adapter — VERIFIED (with an env caveat).** A real turn via the Agent SDK succeeded using the
+  subscription login. Caveat: when Quorum runs *inside* a Claude Code session (or any env with
+  `ANTHROPIC_BASE_URL` / `CLAUDE_CODE_*` set), the SDK inherits that routing and returns 401 — stripping
+  those vars makes it fall back to the keychain OAuth. A normal terminal is unaffected. Known env
+  consideration, documented; not a code bug.
 - **Codex `probeQuota` is a no-op** (`{}`), so Codex handoff is currently reactive-only. Proactive
   handoff needs the app-server `account/rateLimits/read` call wired directly. Safe; follow-up.
 - **Ollama cloud models** (`glm-5.1:cloud`, `gemma4:31b-cloud`) return **403** without ollama.com auth.
