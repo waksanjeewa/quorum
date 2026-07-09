@@ -8,8 +8,15 @@ export interface AuthResult {
 export interface Capabilities {
   /** Can this agent invoke user-defined slash commands/skills headlessly? (DESIGN §10, §12) */
   passThroughCommands: boolean;
+  /** Can this agent edit files / run commands (Phase 2 executor)? Deliberation-only seats are false. */
+  canExecute: boolean;
   contextWindow: number;
   costTier: "subscription" | "api" | "free";
+}
+
+/** Enables execute mode on an SDK adapter: tools on, write sandbox, cwd = the task's worktree. */
+export interface ExecuteConfig {
+  workingDirectory: string;
 }
 
 export interface QuotaHint {

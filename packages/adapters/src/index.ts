@@ -10,6 +10,7 @@ export {
   type AuthResult,
   type Capabilities,
   type QuotaHint,
+  type ExecuteConfig,
 } from "./types.js";
 export { MockAdapter, type MockAdapterOpts, type MockStep } from "./mock/mock-adapter.js";
 export { SeatManager, type AdapterRegistry, type SeatManagerOpts } from "./seat-manager.js";
@@ -19,5 +20,5 @@ export { HttpAdapter, type HttpAdapterOpts } from "./http/http-adapter.js";
 export { resolveHttpAdapter, DIRECT_PROVIDERS, type ResolveHttpOpts } from "./http/presets.js";
 export { estimateCostUsd, priceFor } from "./http/prices.js";
 export { SdkAdapter, type ChatClient, type SdkAdapterOpts } from "./sdk/chat-client.js";
-export { createClaudeAdapter, type ClaudeAdapterOpts } from "./claude/claude-adapter.js";
-export { createCodexAdapter, type CodexAdapterOpts } from "./codex/codex-adapter.js";
+export { createClaudeAdapter, claudeQueryOptions, type ClaudeAdapterOpts } from "./claude/claude-adapter.js";
+export { createCodexAdapter, codexThreadOptions, type CodexAdapterOpts } from "./codex/codex-adapter.js";

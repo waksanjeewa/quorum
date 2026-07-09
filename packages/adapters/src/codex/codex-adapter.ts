@@ -1,4 +1,4 @@
-import type { AuthResult, QuotaHint } from "../types.js";
+import type { AuthResult, ExecuteConfig, QuotaHint } from "../types.js";
 import { SdkAdapter, type ChatClient } from "../sdk/chat-client.js";
 
 export interface CodexAdapterOpts {
@@ -8,6 +8,18 @@ export interface CodexAdapterOpts {
   authCheck?: () => Promise<AuthResult>;
   /** Override the quota probe (tests). If omitted, uses the app-server rate-limit read. */
   probeQuota?: () => Promise<QuotaHint>;
+  /** Enable execute mode (Phase 2): workspace-write sandbox, cwd = the task's worktree. */
+  execute?: ExecuteConfig;
+}
+
+/** Options passed to startThread/resumeThread. Pure function so it can be unit-tested. */
+export function codexThreadOptions(model: string | undefined, execute: ExecuteConfig | undefined): Record<string, unknown> {
+  return {
+    skipGitRepoCheck: true,
+    sandboxMode: execute ? "workspace-write" : "read-only",
+    ...(model ? { model } : {}),
+    ...(execute ? { workingDirectory: execute.workingDirectory } : {}),
+  };
 }
 
 /**
@@ -18,8 +30,8 @@ export interface CodexAdapterOpts {
 export function createCodexAdapter(opts: CodexAdapterOpts = {}): SdkAdapter {
   return new SdkAdapter({
     id: "codex",
-    client: opts.client ?? createCodexSdkClient(opts.model),
-    capabilities: { passThroughCommands: false, contextWindow: 272_000, costTier: "subscription" },
+    client: opts.client ?? createCodexSdkClient(opts.model, opts.execute),
+    capabilities: { passThroughCommands: false, canExecute: true, contextWindow: 272_000, costTier: "subscription" },
     limitRegex: /hit your usage limit|usage limit|rate limit/i,
     authCheck: opts.authCheck ?? defaultCodexAuth,
     probeQuota: opts.probeQuota ?? probeCodexQuota,
@@ -65,7 +77,7 @@ async function probeCodexQuota(): Promise<QuotaHint> {
 }
 
 /** Lazy bridge from the Codex SDK thread API to our ChatClient port. */
-function createCodexSdkClient(model?: string): ChatClient {
+function createCodexSdkClient(model?: string, execute?: ExecuteConfig): ChatClient {
   return {
     async run({ system, user, sessionId }) {
       const { Codex } = await loadCodexSdk();
@@ -73,11 +85,9 @@ function createCodexSdkClient(model?: string): ChatClient {
         startThread: (o?: unknown) => { id?: string; run: (p: string) => Promise<{ finalResponse?: string; text?: string }> };
         resumeThread: (id: string, o?: unknown) => { id?: string; run: (p: string) => Promise<{ finalResponse?: string; text?: string }> };
       };
-      // Deliberation never touches files: read-only sandbox, and skip the git-repo check so Quorum
-      // sessions can run in ANY directory (verified in the live smoke test — the SDK otherwise
-      // errors "Not inside a trusted directory" outside a git repo).
-      const opts: Record<string, unknown> = { skipGitRepoCheck: true, sandboxMode: "read-only" };
-      if (model) opts["model"] = model;
+      // skipGitRepoCheck lets Quorum run in ANY directory (verified in the live smoke). Deliberation
+      // = read-only sandbox; execute mode = workspace-write with cwd set to the task's worktree.
+      const opts = codexThreadOptions(model, execute);
       const thread = sessionId ? codex.resumeThread(sessionId, opts) : codex.startThread(opts);
       const result = (await thread.run(`${system}\n\n${user}`)) as {
         finalResponse?: string;

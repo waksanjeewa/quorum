@@ -48,6 +48,7 @@ export class HttpAdapter implements ModelAdapter {
     this.keyEnvName = opts.keyEnvName ?? "API_KEY";
     this.caps = {
       passThroughCommands: opts.passThroughCommands ?? false,
+      canExecute: false,
       contextWindow: opts.contextWindow ?? 128_000,
       costTier: opts.costTier ?? "api",
     };

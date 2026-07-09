@@ -29,7 +29,7 @@ export class OllamaAdapter implements ModelAdapter {
   }
 
   capabilities(): Capabilities {
-    return { passThroughCommands: false, contextWindow: 8192, costTier: "free" };
+    return { passThroughCommands: false, canExecute: false, contextWindow: 8192, costTier: "free" };
   }
 
   async auth(): Promise<AuthResult> {

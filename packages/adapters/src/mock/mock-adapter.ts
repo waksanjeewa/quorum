@@ -47,6 +47,7 @@ export class MockAdapter implements ModelAdapter {
     this.authResult = opts.auth ?? { ok: true, detail: "mock auth ok" };
     this.caps = {
       passThroughCommands: false,
+      canExecute: false,
       contextWindow: 200_000,
       costTier: "free",
       ...opts.capabilities,

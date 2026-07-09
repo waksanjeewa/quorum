@@ -1,4 +1,4 @@
-import type { AuthResult } from "../types.js";
+import type { AuthResult, ExecuteConfig } from "../types.js";
 import { SdkAdapter, type ChatClient } from "../sdk/chat-client.js";
 
 export interface ClaudeAdapterOpts {
@@ -8,19 +8,37 @@ export interface ClaudeAdapterOpts {
   client?: ChatClient;
   /** Override the auth check (tests). */
   authCheck?: () => Promise<AuthResult>;
+  /** Enable execute mode (Phase 2): tools on, edits allowed, cwd = the task's worktree. */
+  execute?: ExecuteConfig;
+}
+
+/** Options passed to the SDK's query(), split out as a pure function so it can be unit-tested. */
+export function claudeQueryOptions(
+  system: string,
+  sessionId: string | undefined,
+  model: string | undefined,
+  execute: ExecuteConfig | undefined,
+): Record<string, unknown> {
+  return {
+    customSystemPrompt: system,
+    ...(sessionId ? { resume: sessionId } : {}),
+    ...(model ? { model } : {}),
+    ...(execute
+      ? { allowedTools: ["Read", "Write", "Edit", "Bash"], cwd: execute.workingDirectory, permissionMode: "acceptEdits" }
+      : { allowedTools: [] }), // deliberation: no tools
+  };
 }
 
 /**
  * Claude adapter over @anthropic-ai/claude-agent-sdk (DESIGN §12.2). Reuses the user's Claude
- * Code subscription login (no API key needed). Tools are disabled — roundtable turns are
- * deliberation only in Phase 1. Supports headless slash-command/skill pass-through, so
- * capabilities().passThroughCommands is true.
+ * Code subscription login (no API key needed). Deliberation runs with tools disabled; pass
+ * `execute` for Phase-2 executor mode (tools on, cwd = worktree).
  */
 export function createClaudeAdapter(opts: ClaudeAdapterOpts = {}): SdkAdapter {
   return new SdkAdapter({
     id: "claude",
-    client: opts.client ?? createClaudeSdkClient(opts.model),
-    capabilities: { passThroughCommands: true, contextWindow: 200_000, costTier: "subscription" },
+    client: opts.client ?? createClaudeSdkClient(opts.model, opts.execute),
+    capabilities: { passThroughCommands: true, canExecute: true, contextWindow: 200_000, costTier: "subscription" },
     limitRegex: /limit reached|usage limit/i,
     authCheck: opts.authCheck ?? defaultClaudeAuth,
   });
@@ -43,18 +61,15 @@ async function loadClaudeSdk(): Promise<{ query: (opts: unknown) => AsyncIterabl
 }
 
 /** Lazy bridge from the Claude Agent SDK's streaming query() to our ChatClient port. */
-function createClaudeSdkClient(model?: string): ChatClient {
+function createClaudeSdkClient(model?: string, execute?: ExecuteConfig): ChatClient {
   return {
     async run({ system, user, sessionId, signal }) {
       const { query } = await loadClaudeSdk();
       const ctrl = new AbortController();
       signal.addEventListener("abort", () => ctrl.abort(), { once: true });
       const options: Record<string, unknown> = {
-        customSystemPrompt: system,
-        allowedTools: [],
+        ...claudeQueryOptions(system, sessionId, model, execute),
         abortController: ctrl,
-        ...(sessionId ? { resume: sessionId } : {}),
-        ...(model ? { model } : {}),
       };
       let text = "";
       let newSession = sessionId;
