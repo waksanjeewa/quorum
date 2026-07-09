@@ -12,3 +12,4 @@ export {
   type QuotaHint,
 } from "./types.js";
 export { MockAdapter, type MockAdapterOpts, type MockStep } from "./mock/mock-adapter.js";
+export { SeatManager, type AdapterRegistry, type SeatManagerOpts } from "./seat-manager.js";
