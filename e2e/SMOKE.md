@@ -59,3 +59,19 @@ These paths are best-effort (SDKs not exercised in CI). Verify and fix mappings 
       app-server `account/rateLimits/read` for `probeQuota()`
 
 Record anything that differs in the relevant `tasks/1x0-*.md` journal.
+
+## D. Phase 2 — the Workshop (executor edits code, real repo)
+
+Requires a `codex` or `claude` login and a target **git repo**.
+
+1. In a scratch git repo, seed a session with a runtime task whose acceptance is a command
+   (a `$ `-prefixed acceptance line, e.g. `$ grep -q "Hello" hello.txt`).
+2. Run the execute stage with an execute-mode executor (`createCodexAdapter({ execute: { workingDirectory } })`).
+   - [ ] `task_start` → executor works in `.quorum/worktrees/<id>/` (isolated branch `quorum/<id>`)
+   - [ ] the executor actually creates/edits the file
+   - [ ] `task_result passed=true` (acceptance command ran in the worktree)
+   - [ ] `merge merged` → the change lands on your base branch; task marked `done`
+3. Force a usage limit mid-task → `seat_change`, next chain model resumes the **same** worktree.
+4. STOP mid-execute → executor child dies < 6s; the worktree persists (task resumable).
+
+> Verified 2026-07-09: a real Codex executor created `hello.txt` = "Hello, Quorum!" and merged to main in ~78s.

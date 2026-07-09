@@ -15,6 +15,7 @@ Node 25, Ollama 0.30.11, codex-cli 0.132.0 + @openai/codex-sdk 0.143.0, claude-c
 | **Generic HTTP adapter (OpenRouter)** | Real free-model turn (`poolside/laguna-xs-2.1:free`) → `ok`, content parsed, **cost=$0** ✓; 429 correctly mapped to `usage_limit` ✓ |
 | **Claude SDK adapter** | Real turn via `@anthropic-ai/claude-agent-sdk` reusing the subscription login ✓ (see env note below) |
 | **Live cross-provider failover** | `quorum start` with `[openrouter/…:free, ollama/…]` chains: OpenRouter rate-limited mid-run → seats **failed over to local Ollama** and kept going (`seat_change reason=usage_limit`) — the session never died ✓ |
+| **Phase 2 — real executor edits code** | A live **Codex executor** (execute mode, workspace-write) took a task in an isolated **git worktree**, actually created `hello.txt`, passed acceptance (`grep`), and **merged to main** — task marked `done`, file on `main` = "Hello, Quorum!" (78s) ✓ |
 
 ## 🐛 Bugs found & fixed during smoke
 
