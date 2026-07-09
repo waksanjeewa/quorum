@@ -71,6 +71,18 @@ export function buildExecutorFactory(config: SessionConfig): (worktreePath: stri
   };
 }
 
+/**
+ * A single runner for triaging shell input (chat vs. build) before a roundtable is convened.
+ * Prefers an executor-capable model (claude/codex) for a good conversational reply, else the first
+ * configured model.
+ */
+export function buildTriageRunner(config: SessionConfig, opts: BuildRegistryOpts = {}): SeatRunner | undefined {
+  const { registry } = buildAdapterRegistry(config, opts);
+  const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))];
+  const preferred = ids.find((id) => id === "claude" || id === "codex") ?? ids[0];
+  return preferred ? registry.get(preferred) : undefined;
+}
+
 /** Names of the executor-capable models configured across all seats (for `quorum doctor` / gating). */
 export function executorModelIds(config: SessionConfig): string[] {
   const seatIds: SeatId[] = Object.keys(config.seats);
