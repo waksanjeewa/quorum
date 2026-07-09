@@ -52,6 +52,29 @@ export const TranscriptEventSchema = z.discriminatedUnion("type", [
     by: z.enum(["human", "system"]),
     detail: z.string().optional(),
   }),
+  // ---- Phase 2 (the Workshop) execution events ----
+  z.object({
+    ts: IsoTimestamp,
+    type: z.literal("task_start"),
+    task: z.string(),
+    seat: SeatIdSchema,
+    model: z.string(),
+    worktree: z.string(),
+  }),
+  z.object({
+    ts: IsoTimestamp,
+    type: z.literal("task_result"),
+    task: z.string(),
+    passed: z.boolean(),
+    detail: z.string().optional(),
+  }),
+  z.object({
+    ts: IsoTimestamp,
+    type: z.literal("merge"),
+    task: z.string(),
+    result: z.enum(["merged", "conflict", "blocked"]),
+    detail: z.string().optional(),
+  }),
 ]);
 export type TranscriptEvent = z.infer<typeof TranscriptEventSchema>;
 

@@ -9,3 +9,10 @@ export {
   type RoundtableResult,
   type StoppedReason,
 } from "./engine.js";
+export {
+  runExecuteStage,
+  type RunExecuteOpts,
+  type ExecuteResult,
+  type ExecutorFactory,
+  type ReviewFn,
+} from "./execute.js";
