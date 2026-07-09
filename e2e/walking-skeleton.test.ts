@@ -89,26 +89,33 @@ describe("Quorum walking skeleton (Phase 1 DoD)", () => {
   });
 
   it("a mid-run injection appears in the transcript and is addressed on the next turn", async () => {
-    // proposer's first turn is slow, guaranteeing the injection lands mid-run (before convergence)
-    const slowProposer = new MockAdapter({
-      id: "pm",
-      script: [{ kind: "delay", ms: 150, result: { status: "ok", content: "warming up" } }, ...Array.from({ length: 60 }, () => proposerFn(8))],
-    });
-    await boot(
-      () => ({ registry: { get: (id) => ({ pm: slowProposer, cm: seat("cm", approverFn) })[id] } }),
-      ["brainstorm"],
-    );
-    const cfg = parseSessionConfig({ seats: { proposer: { chain: ["pm"] }, critic: { chain: ["cm"] } }, budgets: { max_turns_per_stage: 40 } });
+    // Paced, never-converging seats that echo pending injections — so there is always a "next turn"
+    // and the run is slow enough for the injection to land. We poll for the condition (no timing guess).
+    const echo = (id: string): MockAdapter =>
+      new MockAdapter({
+        id,
+        delayMs: 25,
+        script: Array.from({ length: 200 }, () => (ctx: TurnContext) => ({
+          status: "ok" as const,
+          content: (ctx.pendingInjections.length ? `Addressing: ${ctx.pendingInjections.join("; ")}\n` : "") + "thinking",
+        })),
+      });
+    await boot(() => ({ registry: { get: (id) => ({ pm: echo("pm"), cm: echo("cm") })[id] } }), ["brainstorm"]);
+    const cfg = parseSessionConfig({ seats: { proposer: { chain: ["pm"] }, critic: { chain: ["cm"] } }, budgets: { max_turns_per_stage: 200 } });
     const created = await (await api("/sessions", "POST", { goal: "injectable", config: cfg })).json();
 
     await api(`/sessions/${created.id}/inject`, "POST", { content: "EU-MARKET-FIRST" });
-    await server.daemon.get(created.id)!.wait();
 
-    const events = await readEvents(join(root, ".quorum", "sessions", created.id));
-    const humanIdx = events.findIndex((e) => e.type === "human" && e.content === "EU-MARKET-FIRST");
-    expect(humanIdx).toBeGreaterThanOrEqual(0);
-    // a proposer turn after the injection acknowledges it
-    const addressed = events.slice(humanIdx).some((e) => e.type === "turn" && e.content.includes("Addressing: EU-MARKET-FIRST"));
+    // Poll the transcript until a turn after the injection acknowledges it.
+    const dir = join(root, ".quorum", "sessions", created.id);
+    let addressed = false;
+    for (let i = 0; i < 100 && !addressed; i++) {
+      const events = await readEvents(dir);
+      const humanIdx = events.findIndex((e) => e.type === "human" && e.content === "EU-MARKET-FIRST");
+      addressed = humanIdx >= 0 && events.slice(humanIdx).some((e) => e.type === "turn" && e.content.includes("Addressing: EU-MARKET-FIRST"));
+      if (!addressed) await new Promise((r) => setTimeout(r, 20));
+    }
+    await api(`/sessions/${created.id}/stop`, "POST");
     expect(addressed).toBe(true);
   });
 

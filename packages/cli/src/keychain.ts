@@ -38,6 +38,12 @@ export async function deleteSecret(account: string): Promise<void> {
   }
 }
 
+/** Env-var names to look up in the Keychain: built-in direct providers + any from config. */
+export function knownKeyEnvs(config: { providers: Record<string, { keyEnv: string }> }): string[] {
+  const builtin = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"];
+  return [...new Set([...builtin, ...Object.values(config.providers).map((p) => p.keyEnv)])];
+}
+
 /**
  * Build an env map that layers stored Keychain secrets under the given env-var names on top of
  * process.env (real env wins). Passed to the daemon so HTTP adapters can resolve provider keys.

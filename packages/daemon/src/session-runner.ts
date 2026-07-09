@@ -44,6 +44,10 @@ export interface SessionStatus {
   seats: Record<SeatId, { model: string; paused: boolean }>;
   turns: number;
   converged: boolean;
+  /** Milliseconds since the session started. */
+  elapsedMs: number;
+  /** Id of the task currently being executed (Phase 2), if any. */
+  currentTask?: string;
   stoppedReason?: RoundtableResult["stoppedReason"];
 }
 
@@ -66,6 +70,7 @@ export class RunningSession {
   private readonly subscribers = new Set<(e: TranscriptEvent, index: number) => void>();
   private readonly currentModel: Record<SeatId, string> = {};
   private firstSeatRunner: SeatRunner | undefined;
+  private startedAtMs = 0;
   private state: SessionState = "running";
   private result: RoundtableResult | undefined;
   private runPromise: Promise<void> | undefined;
@@ -88,6 +93,7 @@ export class RunningSession {
 
   /** Load prior transcript (for resume) then start the roundtable loop. */
   async start(): Promise<void> {
+    this.startedAtMs = this.now().getTime();
     for (const e of await readEvents(this.session.dir)) this.log.push(e);
     const seats = this.seatManager.seats();
     const gated: Record<SeatId, SeatRunner> = {};
@@ -207,6 +213,13 @@ export class RunningSession {
     for (const seatId of Object.keys(this.session.config.seats)) {
       seats[seatId] = { model: this.currentModel[seatId] ?? "?", paused: this.gate.isPaused() };
     }
+    // Current task = the latest task_start not followed by a merge for that task.
+    const merged = new Set(this.log.filter((e) => e.type === "merge").map((e) => (e as { task: string }).task));
+    const currentTask = this.log
+      .filter((e) => e.type === "task_start")
+      .map((e) => (e as { task: string }).task)
+      .reverse()
+      .find((t) => !merged.has(t));
     return {
       id: this.id,
       state: this.state,
@@ -214,6 +227,8 @@ export class RunningSession {
       seats,
       turns,
       converged: this.result?.converged ?? false,
+      elapsedMs: this.startedAtMs ? this.now().getTime() - this.startedAtMs : 0,
+      ...(currentTask ? { currentTask } : {}),
       ...(this.result ? { stoppedReason: this.result.stoppedReason } : {}),
     };
   }

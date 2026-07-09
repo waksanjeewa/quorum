@@ -27,6 +27,8 @@ export interface MockAdapterOpts {
   script?: MockStep[];
   /** When set, probeQuota is defined and returns this. */
   quota?: QuotaHint;
+  /** Delay every turn by this many ms (abortable) — lets tests pace a run for external interaction. */
+  delayMs?: number;
 }
 
 /**
@@ -39,6 +41,7 @@ export class MockAdapter implements ModelAdapter {
   private readonly caps: Capabilities;
   private readonly script: MockStep[];
   private readonly quota: QuotaHint | undefined;
+  private readonly delayMs: number;
   /** Number of takeTurn calls received — useful for assertions. */
   calls = 0;
 
@@ -54,6 +57,7 @@ export class MockAdapter implements ModelAdapter {
     };
     this.script = opts.script ? [...opts.script] : [];
     this.quota = opts.quota;
+    this.delayMs = opts.delayMs ?? 0;
     if (this.quota !== undefined) {
       this.probeQuota = async () => this.quota as QuotaHint;
     }
@@ -72,6 +76,7 @@ export class MockAdapter implements ModelAdapter {
   async takeTurn(ctx: TurnContext, signal: AbortSignal): Promise<TurnResult> {
     this.calls++;
     if (signal.aborted) throw new AbortError();
+    if (this.delayMs > 0) await abortableDelay(this.delayMs, signal);
     const step = this.script.shift();
 
     if (step === undefined) {

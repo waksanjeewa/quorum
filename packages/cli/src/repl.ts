@@ -5,21 +5,25 @@ import { QuorumHttpServer, loadConfig, doctorReport } from "@quorum/daemon";
 import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
 import { runSetup } from "./setup.js";
-import { resolveSecretsEnv } from "./keychain.js";
+import { resolveSecretsEnv, knownKeyEnvs } from "./keychain.js";
+import { C, PROMPT, banner } from "./theme.js";
 import type { RunningSession } from "@quorum/daemon";
 
-const PROMPT = "\x1b[1mquorum›\x1b[0m ";
-const HELP = `
-Commands (type a goal to start building; while running, type to inject):
-  /models          pick your models (login or paste an API key)
-  /doctor          check which model seats are ready
-  /status          show the current session
-  /pause /resume   pause / resume the running session
-  /stop            stop the running session (kill switch)
-  /config          show where your config lives
-  /help            this help
-  /exit            leave quorum
-`;
+const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
+  ${C.brand("/models")}          pick your models — login or paste an API key
+  ${C.brand("/doctor")}          check which model seats are ready
+  ${C.brand("/agents")}          show the seats, what they're doing, and elapsed time
+  ${C.brand("/status")}          one-line session status
+  ${C.brand("/pause")} ${C.brand("/resume")}   pause / resume the running session
+  ${C.brand("/stop")}            stop the running session (kill switch)
+  ${C.brand("/config")}          show where your config lives
+  ${C.brand("/help")}            this help
+  ${C.brand("/exit")}            leave quorum`;
+
+const fmtElapsed = (ms: number): string => {
+  const s = Math.floor(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+};
 
 /** The interactive Quorum shell: stay inside `quorum`, drive it with `/` commands. */
 export async function repl(projectRoot: string): Promise<void> {
@@ -36,19 +40,34 @@ export async function repl(projectRoot: string): Promise<void> {
   };
   const info = (text: string): void => printAbove(`\x1b[2m${text}\x1b[0m`);
 
-  console.log("\n\x1b[1mQuorum\x1b[0m — multiple AI models plan and build together.");
+  console.log(
+    "\n" +
+      banner([
+        `${C.brand("◆")} ${C.bold("Quorum")} ${C.dim("— multiple AI models plan and build together")}`,
+        `${C.dim("your session never dies · you're always at the table")}`,
+      ]) +
+      "\n",
+  );
+  console.log(HELP + "\n");
+
+  // Model setup is mandatory — if there's no config, go straight into it.
+  let hasConfig = true;
   try {
     await access(join(projectRoot, ".quorum", "config.yaml"));
   } catch {
-    console.log("\x1b[2mNo models configured yet — type /models to set up.\x1b[0m");
+    hasConfig = false;
   }
-  console.log("\x1b[2mType a goal, or /help. Ctrl+C to interrupt, /exit to leave.\x1b[0m\n");
+  if (!hasConfig) {
+    console.log(C.dim("No models configured yet — let's pick them.\n"));
+    rl.pause();
+    await runSetup(projectRoot, rl);
+    rl.resume();
+  }
   rl.prompt();
 
   const startGoal = async (goal: string): Promise<void> => {
     const config = await loadConfig(projectRoot);
-    const keyEnvs = Object.values(config.providers).map((p) => p.keyEnv);
-    const env = await resolveSecretsEnv(keyEnvs);
+    const env = await resolveSecretsEnv(knownKeyEnvs(config));
     if (server) await server.close();
     server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
     const listen = await server.listen();
@@ -82,9 +101,24 @@ export async function repl(projectRoot: string): Promise<void> {
           for (const c of report) console.log(`  ${c.ok ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"} ${c.id} \x1b[2m${c.detail}\x1b[0m`);
           return;
         }
-        case "status":
-          console.log(session ? `  ${session.status().state} · stage ${session.status().stage} · ${session.status().turns} turns` : "  No session yet.");
+        case "status": {
+          if (!session) return void console.log("  No session yet — type a goal to start.");
+          const s = session.status();
+          console.log(`  ${C.bold(s.state)} · stage ${s.stage} · ${s.turns} turns · ${fmtElapsed(s.elapsedMs)}${s.currentTask ? ` · task ${s.currentTask}` : ""}`);
           return;
+        }
+        case "agents": {
+          if (!session) return void console.log("  No session yet — type a goal to start.");
+          const s = session.status();
+          console.log(`\n  ${C.bold("Session")} ${s.id}  ${C.dim(`· ${s.state} · stage ${s.stage} · ${fmtElapsed(s.elapsedMs)}`)}`);
+          if (s.currentTask) console.log(`  ${C.brand("▶")} building task ${C.bold(s.currentTask)}`);
+          console.log(`  ${C.bold("Seats")}:`);
+          for (const [name, seat] of Object.entries(s.seats)) {
+            console.log(`    ${C.cyan(name.padEnd(9))} ${seat.model}${seat.paused ? C.dim(" (paused)") : ""}`);
+          }
+          console.log("");
+          return;
+        }
         case "pause":
           session?.pause();
           info("paused");

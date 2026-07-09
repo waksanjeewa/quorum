@@ -9,7 +9,7 @@ import { control, inject, listSessions, statusOf, streamEvents } from "./command
 import { formatEvent } from "./format.js";
 import { repl } from "./repl.js";
 import { runSetup } from "./setup.js";
-import { resolveSecretsEnv } from "./keychain.js";
+import { resolveSecretsEnv, knownKeyEnvs } from "./keychain.js";
 
 const HELP = `Quorum — multiple AI models collaborate on one goal.
 
@@ -158,7 +158,7 @@ async function doctor(projectRoot: string): Promise<void> {
 
 async function start(projectRoot: string, goal: string): Promise<void> {
   const config = await loadConfig(projectRoot);
-  const env = await resolveSecretsEnv(Object.values(config.providers).map((p) => p.keyEnv));
+  const env = await resolveSecretsEnv(knownKeyEnvs(config));
   const server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
   const info = await server.listen();
   const running = await server.daemon.createSession(goal, config);
