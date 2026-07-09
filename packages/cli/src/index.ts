@@ -66,13 +66,14 @@ async function main(): Promise<void> {
 }
 
 async function start(projectRoot: string, goal: string): Promise<void> {
-  const server = new QuorumHttpServer({ projectRoot, renderDashboard });
+  const server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true });
   const info = await server.listen();
   const config = await loadConfig(projectRoot);
   const running = await server.daemon.createSession(goal, config);
 
   console.log(`\n  Quorum session \x1b[1m${running.id}\x1b[0m started`);
   console.log(`  Dashboard/API: ${info.url}`);
+  console.log(`  Autonomous: deliberate → plan → build (needs a git repo to execute).`);
   console.log(`  Ctrl+C stops the session.\n`);
 
   running.subscribe((e) => console.log(formatEvent(e)));

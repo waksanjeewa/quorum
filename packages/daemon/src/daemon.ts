@@ -1,6 +1,6 @@
-import { createSession, type SeatRunner, type SessionConfig, type Stage } from "@quorum/core";
+import { createSession, type ExecutorFactory, type ReviewFn, type SeatRunner, type SessionConfig, type Stage } from "@quorum/core";
 import type { AdapterRegistry } from "@quorum/adapters";
-import { buildAdapterRegistry } from "./registry.js";
+import { buildAdapterRegistry, buildExecutorFactory } from "./registry.js";
 import { RunningSession } from "./session-runner.js";
 
 export interface DaemonOpts {
@@ -12,6 +12,12 @@ export interface DaemonOpts {
   registryFactory?: (config: SessionConfig) => { registry: AdapterRegistry; summarizer?: SeatRunner };
   /** Restrict stages (tests / headless). Default: engine's brainstorm → plan. */
   stages?: Stage[];
+  /** After plan converges, decompose + execute in projectRoot (git repo). */
+  autonomous?: boolean;
+  /** Override the executor factory (tests inject mock executors). */
+  executorFactory?: ExecutorFactory;
+  /** Review hook over executor diffs. */
+  review?: ReviewFn;
 }
 
 /**
@@ -40,12 +46,17 @@ export class Daemon {
     const now = this.opts.now ?? (() => new Date());
     const session = await createSession(this.opts.projectRoot, goal, config, { now: now() });
     const { registry, summarizer } = this.buildRegistry(config);
+    const executorFactory = this.opts.executorFactory ?? buildExecutorFactory(config);
     const running = new RunningSession({
       session,
       registry,
       ...(summarizer ? { summarizer } : {}),
       now,
       ...(this.opts.stages ? { stages: this.opts.stages } : {}),
+      projectRoot: this.opts.projectRoot,
+      autonomous: this.opts.autonomous ?? false,
+      executorFactory,
+      ...(this.opts.review ? { review: this.opts.review } : {}),
     });
     this.sessions.set(running.id, running);
     await running.start();

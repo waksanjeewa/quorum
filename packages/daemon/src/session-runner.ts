@@ -1,9 +1,14 @@
 import {
   appendEvent,
+  decomposePlan,
+  ensureGitRepo,
   readEvents,
+  runExecuteStage,
   runRoundtable,
   SummaryMaintainer,
   currentStage,
+  type ExecutorFactory,
+  type ReviewFn,
   type RoundtableResult,
   type SeatId,
   type SeatRunner,
@@ -20,6 +25,14 @@ export interface RunningSessionOpts {
   summarizer?: SeatRunner;
   now?: () => Date;
   stages?: Stage[];
+  /** The target git repo. Required for autonomous execution. */
+  projectRoot?: string;
+  /** After plan converges, decompose + execute (needs projectRoot to be a git repo). */
+  autonomous?: boolean;
+  /** Builds execute-mode adapters per worktree. */
+  executorFactory?: ExecutorFactory;
+  /** Review hook over the executor diff (default: acceptance-gated). */
+  review?: ReviewFn;
 }
 
 export type SessionState = "running" | "paused" | "done" | "stopped" | "error";
@@ -44,10 +57,15 @@ export class RunningSession {
   private readonly summary: SummaryMaintainer | undefined;
   private readonly now: () => Date;
   private readonly stages: Stage[] | undefined;
+  private readonly projectRoot: string | undefined;
+  private readonly autonomous: boolean;
+  private readonly executorFactory: ExecutorFactory | undefined;
+  private readonly review: ReviewFn | undefined;
   /** Full event history for this run (disk history + live), for synchronous SSE replay. */
   private readonly log: TranscriptEvent[] = [];
   private readonly subscribers = new Set<(e: TranscriptEvent, index: number) => void>();
   private readonly currentModel: Record<SeatId, string> = {};
+  private firstSeatRunner: SeatRunner | undefined;
   private state: SessionState = "running";
   private result: RoundtableResult | undefined;
   private runPromise: Promise<void> | undefined;
@@ -57,6 +75,10 @@ export class RunningSession {
     this.session = opts.session;
     this.now = opts.now ?? (() => new Date());
     this.stages = opts.stages;
+    this.projectRoot = opts.projectRoot;
+    this.autonomous = opts.autonomous ?? false;
+    this.executorFactory = opts.executorFactory;
+    this.review = opts.review;
     this.seatManager = new SeatManager(opts.session.config, opts.registry, { now: this.now });
     this.summary = opts.summarizer ? new SummaryMaintainer(opts.session.dir, opts.summarizer) : undefined;
     for (const [seatId, cfg] of Object.entries(opts.session.config.seats)) {
@@ -73,8 +95,17 @@ export class RunningSession {
       gated[seatId] = gatedRunner(runner, this.gate);
       this.currentModel[seatId] = runner.id;
     }
+    this.firstSeatRunner = Object.values(gated)[0];
 
-    this.runPromise = runRoundtable({
+    this.runPromise = this.runPipeline(gated).catch((err) => {
+      this.state = "error";
+      void this.broadcast({ ts: this.now().toISOString(), type: "control", action: "stop", by: "system", detail: `error: ${String(err)}` });
+    });
+  }
+
+  /** Deliberate (brainstorm → plan); then, in autonomous mode on a git repo, decompose + execute. */
+  private async runPipeline(gated: Record<SeatId, SeatRunner>): Promise<void> {
+    const rt = await runRoundtable({
       session: this.session,
       seats: gated,
       ...(this.stages ? { stages: this.stages } : {}),
@@ -85,15 +116,38 @@ export class RunningSession {
         return next ? gatedRunner(next, this.gate) : null;
       },
       onEvent: (e) => this.onEngineEvent(e),
-    })
-      .then((r) => {
-        this.result = r;
-        this.state = r.stoppedReason === "aborted" ? "stopped" : "done";
-      })
-      .catch((err) => {
-        this.state = "error";
-        this.broadcast({ ts: this.now().toISOString(), type: "control", action: "stop", by: "system", detail: `error: ${String(err)}` });
-      });
+    });
+    this.result = rt;
+
+    if (this.autonomous && rt.converged && !this.abort.signal.aborted && (await this.isGitRepo())) {
+      this.state = "running";
+      const planner = this.firstSeatRunner;
+      if (planner) {
+        await decomposePlan({ session: this.session, planner, now: this.now, signal: this.abort.signal, onEvent: (e) => this.onEngineEvent(e) });
+      }
+      if (this.executorFactory && this.projectRoot) {
+        await runExecuteStage({
+          session: this.session,
+          projectRoot: this.projectRoot,
+          makeExecutor: this.executorFactory,
+          ...(this.review ? { review: this.review } : {}),
+          now: this.now,
+          signal: this.abort.signal,
+          onEvent: (e) => this.onEngineEvent(e),
+        });
+      }
+    }
+    this.state = this.abort.signal.aborted ? "stopped" : rt.stoppedReason === "aborted" ? "stopped" : "done";
+  }
+
+  private async isGitRepo(): Promise<boolean> {
+    if (!this.projectRoot) return false;
+    try {
+      await ensureGitRepo(this.projectRoot);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private onEngineEvent(e: TranscriptEvent): void {

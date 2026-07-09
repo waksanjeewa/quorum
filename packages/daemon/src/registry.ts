@@ -1,4 +1,4 @@
-import type { SeatRunner, SessionConfig } from "@quorum/core";
+import type { SeatId, SeatRunner, SessionConfig } from "@quorum/core";
 import {
   createClaudeAdapter,
   createCodexAdapter,
@@ -59,4 +59,26 @@ export function buildAdapterRegistry(config: SessionConfig, opts: BuildRegistryO
   };
 
   return { registry: { get }, summarizer };
+}
+
+/**
+ * Build the Phase-2 executor factory: an execute-mode adapter per worktree, drawn from the
+ * executor-capable models (claude, codex) across all seat chains. `attempt` walks that ordered list
+ * for worktree-bound failover; null when exhausted.
+ */
+export function buildExecutorFactory(config: SessionConfig): (worktreePath: string, attempt: number) => SeatRunner | null {
+  const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter((id) => id === "claude" || id === "codex");
+  return (worktreePath, attempt) => {
+    const id = ids[attempt];
+    if (id === "claude") return createClaudeAdapter({ execute: { workingDirectory: worktreePath } });
+    if (id === "codex") return createCodexAdapter({ execute: { workingDirectory: worktreePath } });
+    return null;
+  };
+}
+
+/** Names of the executor-capable models configured across all seats (for `quorum doctor` / gating). */
+export function executorModelIds(config: SessionConfig): string[] {
+  const seatIds: SeatId[] = Object.keys(config.seats);
+  void seatIds;
+  return [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter((id) => id === "claude" || id === "codex");
 }
