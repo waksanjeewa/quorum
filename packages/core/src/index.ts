@@ -6,3 +6,4 @@ export * from "./ledger/index.js";
 export * from "./roundtable/index.js";
 export * from "./summary/index.js";
 export * from "./workspace/index.js";
+export * from "./acceptance/index.js";
