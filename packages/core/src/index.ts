@@ -5,3 +5,4 @@ export * from "./types/index.js";
 export * from "./ledger/index.js";
 export * from "./roundtable/index.js";
 export * from "./summary/index.js";
+export * from "./workspace/index.js";
