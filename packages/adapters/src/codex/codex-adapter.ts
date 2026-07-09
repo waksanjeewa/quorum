@@ -73,7 +73,11 @@ function createCodexSdkClient(model?: string): ChatClient {
         startThread: (o?: unknown) => { id?: string; run: (p: string) => Promise<{ finalResponse?: string; text?: string }> };
         resumeThread: (id: string, o?: unknown) => { id?: string; run: (p: string) => Promise<{ finalResponse?: string; text?: string }> };
       };
-      const opts = model ? { model } : undefined;
+      // Deliberation never touches files: read-only sandbox, and skip the git-repo check so Quorum
+      // sessions can run in ANY directory (verified in the live smoke test — the SDK otherwise
+      // errors "Not inside a trusted directory" outside a git repo).
+      const opts: Record<string, unknown> = { skipGitRepoCheck: true, sandboxMode: "read-only" };
+      if (model) opts["model"] = model;
       const thread = sessionId ? codex.resumeThread(sessionId, opts) : codex.startThread(opts);
       const result = await thread.run(`${system}\n\n${user}`);
       const text = result.finalResponse ?? result.text ?? "";
