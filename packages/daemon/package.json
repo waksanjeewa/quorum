@@ -13,6 +13,10 @@
   "dependencies": {
     "@quorum/adapters": "workspace:*",
     "@quorum/core": "workspace:*",
+    "yaml": "^2.6.1",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
   }
 }
