@@ -69,8 +69,15 @@ describe("runSetup (interactive flow)", () => {
     expect(Object.values(cfg.seats).every((s) => s.chain.includes("ollama/llama3"))).toBe(true);
   });
 
-  it("writes nothing when fewer than 2 models are picked", async () => {
-    await runSetup(dir, fakeRl(["3"]), { detect });
+  it("staffs all three seats with a single picked model", async () => {
+    await runSetup(dir, fakeRl(["1"]), { detect }); // just Claude
+    const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
+    expect(Object.values(cfg.seats).every((s) => s.chain.length === 1 && s.chain[0] === "claude")).toBe(true);
+    expect(Object.keys(cfg.seats)).toHaveLength(3);
+  });
+
+  it("writes nothing when no valid model is picked", async () => {
+    await runSetup(dir, fakeRl(["9"]), { detect });
     await expect(readFile(join(dir, ".quorum", "config.yaml"), "utf8")).rejects.toThrow();
   });
 });

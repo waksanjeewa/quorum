@@ -104,8 +104,8 @@ export async function runSetup(projectRoot: string, rl: Readline, opts: { detect
     }
   }
 
-  if (models.length < 2) {
-    console.log("\nYou need at least 2 models for a roundtable. Nothing written — run /models again.\n");
+  if (models.length < 1) {
+    console.log("\nPick at least one model (enter its number). Nothing written — run /models again.\n");
     return;
   }
 
@@ -113,6 +113,11 @@ export async function runSetup(projectRoot: string, rl: Readline, opts: { detect
   await mkdir(join(projectRoot, ".quorum"), { recursive: true });
   await writeFile(join(projectRoot, ".quorum", "config.yaml"), yaml, "utf8");
   const canBuild = models.some((m) => m === "claude" || m === "codex");
-  console.log(`\n✓ Configured ${models.length} models across proposer / critic / arbiter.`);
+  if (models.length === 1) {
+    console.log(`\n✓ Configured — ${models[0]} will play all three roles (proposer, critic, arbiter).`);
+    console.log("  \x1b[2mAdd more models anytime with /models for diverse perspectives.\x1b[0m");
+  } else {
+    console.log(`\n✓ Configured ${models.length} models across proposer / critic / arbiter.`);
+  }
   console.log(canBuild ? "  You can plan AND build. Type a goal to begin.\n" : "  You can plan (no claude/codex → can't build autonomously). Type a goal to begin.\n");
 }

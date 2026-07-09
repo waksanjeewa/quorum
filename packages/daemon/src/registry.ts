@@ -27,9 +27,9 @@ export interface BuiltRegistry {
  * `<provider>/<model>` handled by the generic HTTP adapter (OpenRouter, OmniRoute, direct APIs).
  */
 export function buildAdapterRegistry(config: SessionConfig, opts: BuildRegistryOpts = {}): BuiltRegistry {
-  const cache = new Map<string, ModelAdapter | null>();
-
-  const make = (id: string): ModelAdapter | undefined => {
+  // NOT cached: each get() returns a FRESH adapter, so two seats using the same model id (e.g. one
+  // model staffing all three roles) get independent SDK conversation threads instead of sharing one.
+  const get = (id: string): ModelAdapter | undefined => {
     if (id === "claude") return createClaudeAdapter();
     if (id === "codex") return createCodexAdapter();
     if (id.startsWith("ollama/")) {
@@ -40,11 +40,6 @@ export function buildAdapterRegistry(config: SessionConfig, opts: BuildRegistryO
       ...(opts.env ? { env: opts.env } : {}),
       ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
     });
-  };
-
-  const get = (id: string): ModelAdapter | undefined => {
-    if (!cache.has(id)) cache.set(id, make(id) ?? null);
-    return cache.get(id) ?? undefined;
   };
 
   const summarizer = (): SeatRunner | undefined => {
