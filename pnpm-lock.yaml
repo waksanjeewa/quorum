@@ -33,9 +33,19 @@ importers:
 
   packages/cli:
     dependencies:
+      '@quorum/core':
+        specifier: workspace:*
+        version: link:../core
       '@quorum/daemon':
         specifier: workspace:*
         version: link:../daemon
+    devDependencies:
+      '@quorum/adapters':
+        specifier: workspace:*
+        version: link:../adapters
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
 
   packages/core:
     dependencies:
