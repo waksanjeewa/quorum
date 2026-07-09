@@ -2,8 +2,15 @@
   "name": "@quorum/dashboard",
   "version": "0.1.0",
   "type": "module",
-  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
-    "build": "echo \"[dashboard] build placeholder — see task 100\" && mkdir -p dist"
+    "build": "tsc -b"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
   }
 }

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@quorum/daemon": "workspace:*",
+    "@quorum/dashboard": "workspace:*",
     "@quorum/core": "workspace:*"
   },
   "devDependencies": {

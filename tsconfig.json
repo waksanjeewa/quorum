@@ -4,6 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./packages/adapters" },
     { "path": "./packages/daemon" },
+    { "path": "./packages/dashboard" },
     { "path": "./packages/cli" }
   ]
 }

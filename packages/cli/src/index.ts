@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { QuorumHttpServer, loadConfig } from "@quorum/daemon";
+import { renderDashboard } from "@quorum/dashboard";
 import { requireClient } from "./client.js";
 import { control, inject, listSessions, statusOf, streamEvents } from "./commands.js";
 import { formatEvent } from "./format.js";
@@ -65,7 +66,7 @@ async function main(): Promise<void> {
 }
 
 async function start(projectRoot: string, goal: string): Promise<void> {
-  const server = new QuorumHttpServer({ projectRoot });
+  const server = new QuorumHttpServer({ projectRoot, renderDashboard });
   const info = await server.listen();
   const config = await loadConfig(projectRoot);
   const running = await server.daemon.createSession(goal, config);

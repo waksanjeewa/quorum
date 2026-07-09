@@ -136,6 +136,20 @@ describe("QuorumHttpServer", () => {
     expect(transcript).toContain("pivot to plan B");
   });
 
+  it("serves an injected dashboard at GET / without auth", async () => {
+    server = new QuorumHttpServer({
+      projectRoot: root,
+      registryFactory: convergingRegistry,
+      renderDashboard: (t) => `<html><body>DASH token=${t}</body></html>`,
+    });
+    const info = await server.listen();
+    const res = await fetch(`${info.url}/`); // no Authorization header
+    const body = await res.text();
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(body).toContain(`token=${info.token}`);
+  });
+
   it("stop halts the run and reports stopped", async () => {
     const hanging: { registry: AdapterRegistry } = {
       registry: { get: (id) => (id === "m" ? new MockAdapter({ id, script: [{ kind: "hang" }, { kind: "hang" }, { kind: "hang" }] }) : undefined) },

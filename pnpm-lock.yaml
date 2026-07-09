@@ -39,6 +39,9 @@ importers:
       '@quorum/daemon':
         specifier: workspace:*
         version: link:../daemon
+      '@quorum/dashboard':
+        specifier: workspace:*
+        version: link:../dashboard
     devDependencies:
       '@quorum/adapters':
         specifier: workspace:*
@@ -75,7 +78,11 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.0)
 
-  packages/dashboard: {}
+  packages/dashboard:
+    devDependencies:
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
 
 packages:
 

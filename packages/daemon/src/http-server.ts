@@ -12,6 +12,12 @@ export interface HttpServerOpts extends DaemonOpts {
   port?: number;
   /** Override the bearer token (default: random). */
   token?: string;
+  /**
+   * Optional dashboard renderer, injected by the CLI so the daemon stays independent of the
+   * dashboard package (dep direction). Served unauthenticated at GET / (localhost-only shell);
+   * the embedded token then guards the API.
+   */
+  renderDashboard?: (token: string) => string;
 }
 
 export interface ListenInfo {
@@ -27,6 +33,7 @@ export class QuorumHttpServer {
   private readonly desiredPort: number;
   private readonly projectRoot: string;
   private readonly server: Server;
+  private readonly renderDashboard: ((token: string) => string) | undefined;
   private info: ListenInfo | undefined;
 
   constructor(opts: HttpServerOpts) {
@@ -34,6 +41,7 @@ export class QuorumHttpServer {
     this.token = opts.token ?? randomUUID();
     this.desiredPort = opts.port ?? 0;
     this.projectRoot = opts.projectRoot;
+    this.renderDashboard = opts.renderDashboard;
     this.server = createServer((req, res) => void this.route(req, res));
   }
 
@@ -69,6 +77,12 @@ export class QuorumHttpServer {
   private async route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", "http://127.0.0.1");
     const parts = url.pathname.split("/").filter(Boolean);
+
+    // The dashboard shell is served unauthenticated (localhost only); its embedded token guards the API.
+    if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+      if (!this.renderDashboard) return html(res, 200, "<h1>Quorum daemon</h1><p>Running. Use the CLI or API.</p>");
+      return html(res, 200, this.renderDashboard(this.token));
+    }
 
     if (!this.authOk(req, url)) return json(res, 401, { error: "unauthorized" });
 
@@ -173,6 +187,11 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.writeHead(status, { "content-type": "application/json" });
   res.end(payload);
+}
+
+function html(res: ServerResponse, status: number, body: string): void {
+  res.writeHead(status, { "content-type": "text/html; charset=utf-8" });
+  res.end(body);
 }
 
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
