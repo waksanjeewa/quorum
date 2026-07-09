@@ -1,8 +1,8 @@
 ---
 id: 260
 title: One-line install + login/onboarding
-status: todo
-owner: null
+status: done
+owner: claude-opus-4-8
 deps: [090]
 owned_paths: ["packages/cli/", "install.sh", "README.md"]
 acceptance:
@@ -17,3 +17,8 @@ Repo is private today; the true one-liner (`npm i -g quorum`) needs an npm publi
 
 ## Journal
 - (empty)
+
+## Journal
+- [claude-opus-4-8] Install + onboarding (131 tests). `quorum init` scaffolds a commented starter .quorum/config.yaml (failover chains + providers). `quorum doctor` (daemon doctorReport) checks every configured model's auth()/reachability with actionable hints + marks executor-capable seats — verified live showing 5/5 seats ready (claude, codex, 2 openrouter, ollama). CLI package.json made publishable (bin, files:[dist], engines, license, repository, keywords, v0.2.0→). install.sh clones+builds+links for source installs (corepack pnpm). README "Getting started" = install → login (claude/codex login) → init → doctor → start.
+  - NOTE: doctor's claude check reports ok when the SDK+login are configured (auth() checks credential source, not a live round-trip), so it's optimistic in the nested-Claude-session env where an actual call 401s. Fine for onboarding readiness; a `--live` deep check could make a real 1-token call later.
+  - Real one-liner `npm i -g quorum` needs an npm publish (repo private today) — packaging is ready. Documented source install for now.

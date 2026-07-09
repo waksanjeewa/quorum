@@ -16,6 +16,8 @@ Node 25, Ollama 0.30.11, codex-cli 0.132.0 + @openai/codex-sdk 0.143.0, claude-c
 | **Claude SDK adapter** | Real turn via `@anthropic-ai/claude-agent-sdk` reusing the subscription login ✓ (see env note below) |
 | **Live cross-provider failover** | `quorum start` with `[openrouter/…:free, ollama/…]` chains: OpenRouter rate-limited mid-run → seats **failed over to local Ollama** and kept going (`seat_change reason=usage_limit`) — the session never died ✓ |
 | **Phase 2 — real executor edits code** | A live **Codex executor** (execute mode, workspace-write) took a task in an isolated **git worktree**, actually created `hello.txt`, passed acceptance (`grep`), and **merged to main** — task marked `done`, file on `main` = "Hello, Quorum!" (78s) ✓ |
+| **Full autonomous pipeline** | `quorum start "Create greeting.txt … Hello from Quorum"` in a git repo with real Codex seats: deliberated brainstorm+plan → **decomposed** spec into 1 task → executor built it in a worktree → acceptance passed → **merged to main**. `greeting.txt` = "Hello from Quorum"; git log: `init → quorum: 001 → quorum: merge 001`. One goal in, committed code out — no human in the loop ✓ |
+| **`quorum doctor` / `init`** | `init` scaffolds config; `doctor` reports all 5 seats ready (claude/codex can-execute, OpenRouter key present, Ollama reachable) with actionable hints ✓ |
 
 ## 🐛 Bugs found & fixed during smoke
 

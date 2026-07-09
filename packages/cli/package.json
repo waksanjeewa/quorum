@@ -1,12 +1,25 @@
 {
   "name": "quorum",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "Local-first tool where multiple AI models collaborate on one goal — plan and build together, with usage-limit-aware handoff.",
   "type": "module",
+  "license": "MIT",
   "bin": {
     "quorum": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": ["ai", "llm", "agents", "orchestration", "claude", "codex", "local-first"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/waksanjeewa/quorum.git"
+  },
   "scripts": {
     "build": "tsc -b"
   },

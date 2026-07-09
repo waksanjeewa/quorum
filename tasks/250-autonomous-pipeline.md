@@ -16,9 +16,6 @@ acceptance:
 See DESIGN §13. Review defaults to acceptance-gated (approve iff acceptance passed) for the MVP; full roundtable review over the diff is a follow-up. Decompose reliability depends on the model producing sensible acceptance commands — fall back to review-only when a task has no commands.
 
 ## Journal
-- (empty)
-
-## Journal
 - [claude-opus-4-8] Autonomous pipeline wired end-to-end (130 tests). decomposePlan (core/roundtable/decompose.ts): reads spec.md, one planner turn → JSON tasks (parseTasksJson tolerant of fences/prose), writes runtime task files with `$ `-prefixed acceptance. Daemon: buildExecutorFactory(config) builds execute-mode claude/codex adapters per worktree from executor-capable chain models; RunningSession.runPipeline = runRoundtable → (if autonomous && converged && projectRoot is git) decomposePlan(planner=first seat) → runExecuteStage. CLI `start` sets autonomous:true + projectRoot=cwd. Non-git dir → deliberation only (tested). Full MockAdapter e2e: plan→decompose→execute→merge→task done→file on main.
   - MVP scoping (journaled): planner for decompose = the first deliberation seat's runner (capable model). Review = acceptance-gated default (full roundtable-over-diff review deferred). Executor turns are NOT pause-gated yet (STOP still works via abort). Decompose reliability depends on the model producing runnable acceptance commands; empty acceptance → review-only task.
   - Next: real-model smoke of `quorum start "build me X"`, then task 260 install/onboarding.

@@ -28,21 +28,41 @@ Goal → [Roundtable: brainstorm] → [Roundtable: plan] → spec.md + tasks/
         proposer · critic · arbiter, with you able to inject anytime
 ```
 
-## Quick start
+## Getting started
+
+**Install** (while the repo is private, install from source):
 
 ```bash
-# from the repo root
-corepack pnpm install
-corepack pnpm build
-
-# run against a free local model (needs `ollama serve` + `ollama pull llama3`)
-node packages/cli/dist/index.js start "plan a birthday party"
+curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+# or: git clone https://github.com/waksanjeewa/quorum && cd quorum && ./install.sh
 ```
 
-Then open the printed dashboard URL to watch the transcript, drop in a message, or hit **STOP**.
+*(Once published, the one-liner will be `npm install -g quorum`.)*
 
-Commands: `quorum start "<goal>"` · `status` · `inject "<msg>"` · `pause` · `resume` · `stop` ·
-`attach`.
+**Log in to the models you want** — Quorum reuses logins you already have, no API keys required:
+
+```bash
+claude login      # for a `claude` seat (Claude Max/Pro)
+codex login       # for a `codex` seat (ChatGPT Plus/Pro)
+# optional: export OPENROUTER_API_KEY=...   for OpenRouter (free & paid models)
+# optional: ollama serve                    for a free local fallback
+```
+
+**Then:**
+
+```bash
+quorum init                       # scaffold .quorum/config.yaml
+quorum doctor                     # see which seats are ready
+quorum start "build me a CLI that converts CSV to JSON"
+```
+
+In a **git repo**, `start` runs the whole thing autonomously — the models deliberate, converge on a
+plan, then an executor builds it in an isolated worktree, verifies it, and merges. In a non-git
+directory it deliberates and produces a plan (`git init` to enable building). Open the printed
+dashboard URL to watch live, drop in a message, or hit **STOP**.
+
+Commands: `quorum init` · `doctor` · `start "<goal>"` · `status` · `inject "<msg>"` · `pause` ·
+`resume` · `stop` · `attach`.
 
 ## Configuration
 

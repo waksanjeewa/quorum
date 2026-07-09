@@ -5,4 +5,5 @@ export { RunningSession, type SessionStatus, type SessionState, type RunningSess
 export { QuorumHttpServer, type HttpServerOpts, type ListenInfo } from "./http-server.js";
 export { buildAdapterRegistry, buildExecutorFactory, executorModelIds, type BuildRegistryOpts, type BuiltRegistry } from "./registry.js";
 export { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
+export { doctorReport, type SeatCheck } from "./doctor.js";
 export { PauseGate, gatedRunner } from "./pause-gate.js";
