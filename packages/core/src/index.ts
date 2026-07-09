@@ -4,3 +4,4 @@ export const CORE_PACKAGE = "@quorum/core";
 export * from "./types/index.js";
 export * from "./ledger/index.js";
 export * from "./roundtable/index.js";
+export * from "./summary/index.js";
