@@ -36,7 +36,7 @@ export function claudeQueryOptions(
  */
 export function createClaudeAdapter(opts: ClaudeAdapterOpts = {}): SdkAdapter {
   return new SdkAdapter({
-    id: "claude",
+    id: opts.model ? `claude/${opts.model}` : "claude",
     client: opts.client ?? createClaudeSdkClient(opts.model, opts.execute),
     capabilities: { passThroughCommands: true, canExecute: true, contextWindow: 200_000, costTier: "subscription" },
     limitRegex: /limit reached|usage limit/i,

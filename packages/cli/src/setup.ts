@@ -77,14 +77,22 @@ async function pickModel(rl: Readline, models: Array<{ id: string; free: boolean
   if (models.length === 0) {
     return (await ask(rl, `  Which model? [${fallbackDefault}] : `)) || fallbackDefault;
   }
+  const freeCount = models.filter((m) => m.free).length;
   const sorted = [...models].sort((a, b) => Number(b.free) - Number(a.free) || a.id.localeCompare(b.id)).slice(0, 15);
-  console.log("");
+  console.log(`\n  ${C.dim(`${models.length} models available (${freeCount} free) — free shown first:`)}`);
   sorted.forEach((m, i) => console.log(`    ${C.dim(`[${i + 1}]`)} ${m.id}${m.free ? C.green(" (free)") : ""}`));
-  const ans = await ask(rl, `  Pick a number, or type a model id [${sorted[0]!.id}] : `);
+  const ans = await ask(rl, `  Pick a number, or type any model id [${sorted[0]!.id}] : `);
   if (!ans) return sorted[0]!.id;
   const n = Number(ans);
   if (Number.isInteger(n) && n >= 1 && n <= sorted.length) return sorted[n - 1]!.id;
   return ans; // typed a model id directly
+}
+
+/** Ask which specific model to use for a subscription seat (claude/codex). Blank = account default. */
+async function askModel(rl: Readline, label: string, suggestions: string[], bareId: string): Promise<string> {
+  console.log(`  ${C.dim(`${label} models: ${suggestions.join(", ")} — or leave blank for your account default`)}`);
+  const m = await ask(rl, `  Which ${label} model? [default] : `);
+  return m ? `${bareId}/${m}` : bareId;
 }
 
 interface ApiProvider {
@@ -134,8 +142,8 @@ export async function runSetup(
   const models: string[] = [];
   const providers: Record<string, ProviderEntry> = {};
 
-  if (nums.has("1")) models.push("claude");
-  if (nums.has("2")) models.push("codex");
+  if (nums.has("1")) models.push(await askModel(rl, "Claude", ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"], "claude"));
+  if (nums.has("2")) models.push(await askModel(rl, "Codex", ["gpt-5.5", "gpt-5"], "codex"));
   if (nums.has("3")) models.push("ollama/llama3");
 
   for (const key of ["4", "5", "6"]) {
@@ -164,7 +172,7 @@ export async function runSetup(
   const yaml = buildConfigYaml(models, providers);
   await mkdir(join(projectRoot, ".quorum"), { recursive: true });
   await writeFile(join(projectRoot, ".quorum", "config.yaml"), yaml, "utf8");
-  const canBuild = models.some((m) => m === "claude" || m === "codex");
+  const canBuild = models.some((m) => /^(claude|codex)(\/|$)/.test(m));
   if (models.length === 1) {
     console.log(`\n${C.green("✓")} Configured — ${C.bold(models[0]!)} will play all three roles (proposer, critic, arbiter).`);
     console.log(`  ${C.dim("Add more models anytime with /models for diverse perspectives.")}`);

@@ -1,4 +1,4 @@
-import type { SeatId, SeatRunner, SessionConfig } from "@quorum/core";
+import type { SeatRunner, SessionConfig } from "@quorum/core";
 import {
   createClaudeAdapter,
   createCodexAdapter,
@@ -14,6 +14,11 @@ export interface BuildRegistryOpts {
 }
 
 const TIER_RANK = { free: 0, api: 1, subscription: 2 } as const;
+
+/** Is this chain id an executor-capable model (claude/codex, with or without a /model suffix)? */
+export function isExecutorModel(id: string): boolean {
+  return /^(claude|codex)(\/|$)/.test(id);
+}
 
 export interface BuiltRegistry {
   registry: AdapterRegistry;
@@ -31,7 +36,9 @@ export function buildAdapterRegistry(config: SessionConfig, opts: BuildRegistryO
   // model staffing all three roles) get independent SDK conversation threads instead of sharing one.
   const get = (id: string): ModelAdapter | undefined => {
     if (id === "claude") return createClaudeAdapter();
+    if (id.startsWith("claude/")) return createClaudeAdapter({ model: id.slice("claude/".length) });
     if (id === "codex") return createCodexAdapter();
+    if (id.startsWith("codex/")) return createCodexAdapter({ model: id.slice("codex/".length) });
     if (id.startsWith("ollama/")) {
       return new OllamaAdapter({ model: id.slice("ollama/".length), ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}) });
     }
@@ -62,11 +69,15 @@ export function buildAdapterRegistry(config: SessionConfig, opts: BuildRegistryO
  * for worktree-bound failover; null when exhausted.
  */
 export function buildExecutorFactory(config: SessionConfig): (worktreePath: string, attempt: number) => SeatRunner | null {
-  const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter((id) => id === "claude" || id === "codex");
+  const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter(isExecutorModel);
   return (worktreePath, attempt) => {
     const id = ids[attempt];
-    if (id === "claude") return createClaudeAdapter({ execute: { workingDirectory: worktreePath } });
-    if (id === "codex") return createCodexAdapter({ execute: { workingDirectory: worktreePath } });
+    if (!id) return null;
+    const execute = { workingDirectory: worktreePath };
+    if (id === "claude") return createClaudeAdapter({ execute });
+    if (id.startsWith("claude/")) return createClaudeAdapter({ model: id.slice("claude/".length), execute });
+    if (id === "codex") return createCodexAdapter({ execute });
+    if (id.startsWith("codex/")) return createCodexAdapter({ model: id.slice("codex/".length), execute });
     return null;
   };
 }
@@ -79,13 +90,11 @@ export function buildExecutorFactory(config: SessionConfig): (worktreePath: stri
 export function buildTriageRunner(config: SessionConfig, opts: BuildRegistryOpts = {}): SeatRunner | undefined {
   const { registry } = buildAdapterRegistry(config, opts);
   const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))];
-  const preferred = ids.find((id) => id === "claude" || id === "codex") ?? ids[0];
+  const preferred = ids.find(isExecutorModel) ?? ids[0];
   return preferred ? registry.get(preferred) : undefined;
 }
 
 /** Names of the executor-capable models configured across all seats (for `quorum doctor` / gating). */
 export function executorModelIds(config: SessionConfig): string[] {
-  const seatIds: SeatId[] = Object.keys(config.seats);
-  void seatIds;
-  return [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter((id) => id === "claude" || id === "codex");
+  return [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter(isExecutorModel);
 }

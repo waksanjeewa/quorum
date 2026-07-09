@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { parseTriage, triage } from "./triage.js";
+import { parseTriage, quickTriage, triage } from "./triage.js";
 import type { SeatRunner } from "./engine.js";
+
+describe("quickTriage (instant, no model call)", () => {
+  it("answers greetings and thanks instantly as chat", () => {
+    for (const g of ["hi", "hey", "hello!", "thanks", "thank you", "gm", "ok"]) {
+      expect(quickTriage(g)?.intent).toBe("chat");
+    }
+  });
+  it("routes obvious build commands straight to build", () => {
+    for (const g of ["build a CLI", "create a script", "fix the login bug", "refactor the parser"]) {
+      expect(quickTriage(g)?.intent).toBe("build");
+    }
+  });
+  it("returns null for ambiguous input (needs a model)", () => {
+    expect(quickTriage("what can you do?")).toBeNull();
+    expect(quickTriage("the tests are flaky")).toBeNull();
+  });
+});
 
 const runner = (content: string): SeatRunner => ({ id: "m", async takeTurn() { return { status: "ok", content }; } });
 

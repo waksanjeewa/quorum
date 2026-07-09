@@ -17,4 +17,4 @@ export {
   type ReviewFn,
 } from "./execute.js";
 export { decomposePlan, parseTasksJson, type DecomposeOpts } from "./decompose.js";
-export { triage, parseTriage, type TriageResult } from "./triage.js";
+export { triage, quickTriage, parseTriage, type TriageResult } from "./triage.js";

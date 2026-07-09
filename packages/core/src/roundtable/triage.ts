@@ -16,6 +16,22 @@ const INSTRUCTIONS =
   "something too vague to act on — just reply to the user directly and warmly in 1–3 sentences. " +
   "Do NOT start planning, do NOT list steps, do NOT mention proposer/critic/arbiter.";
 
+const GREETING = /^(hi|hey+|hello|yo|sup|howdy|hiya|hola|thanks|thank you|thx|ty|ok|okay|k|cool|great|nice|awesome|good (morning|afternoon|evening|night)|gm|gn)[\s!.?]*$/i;
+const BUILD_START = /^(build|create|make|write|implement|design|add|fix|refactor|generate|scaffold|develop|set ?up|code|convert|port|migrate|automate)\b/i;
+
+/**
+ * Instant, model-free triage for obvious cases (fixes the "hi takes 11s" latency): a bare greeting
+ * gets a canned friendly reply; input starting with a build verb goes straight to the roundtable.
+ * Returns null when the input is ambiguous and warrants a real model triage call.
+ */
+export function quickTriage(input: string): TriageResult | null {
+  const t = input.trim();
+  if (t === "") return { intent: "chat", reply: "Tell me what you'd like to build or plan." };
+  if (GREETING.test(t)) return { intent: "chat", reply: "Hi! What would you like to build or plan?" };
+  if (BUILD_START.test(t)) return { intent: "build" };
+  return null;
+}
+
 /** Parse a triage response: exactly "BUILD" → build; anything else → a chat reply. */
 export function parseTriage(content: string): TriageResult {
   const t = content.trim();

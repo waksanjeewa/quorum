@@ -2,7 +2,7 @@ import { createInterface, type Interface as Readline } from "node:readline";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { QuorumHttpServer, loadConfig, doctorReport, buildTriageRunner } from "@quorum/daemon";
-import { triage } from "@quorum/core";
+import { triage, quickTriage } from "@quorum/core";
 import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
 import { runSetup } from "./setup.js";
@@ -71,14 +71,18 @@ export async function repl(projectRoot: string): Promise<void> {
     const env = await resolveSecretsEnv(knownKeyEnvs(config));
 
     // Triage: don't convene a roundtable for a greeting / small talk / a quick question.
-    const triageRunner = buildTriageRunner(config, { env });
-    if (triageRunner) {
-      info("thinking…");
-      const t = await triage(triageRunner, goal);
-      if (t.intent === "chat") {
-        printAbove(`  ${C.cyan(t.reply ?? "Hi!")}`);
-        return;
+    // Obvious cases are instant (no model call); only ambiguous input costs a model turn.
+    let decision = quickTriage(goal);
+    if (!decision) {
+      const triageRunner = buildTriageRunner(config, { env });
+      if (triageRunner) {
+        info("thinking…");
+        decision = await triage(triageRunner, goal);
       }
+    }
+    if (decision?.intent === "chat") {
+      printAbove(`  ${C.cyan(decision.reply ?? "Hi!")}`);
+      return;
     }
 
     if (server) await server.close();

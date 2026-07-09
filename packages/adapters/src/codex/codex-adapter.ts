@@ -29,7 +29,7 @@ export function codexThreadOptions(model: string | undefined, execute: ExecuteCo
  */
 export function createCodexAdapter(opts: CodexAdapterOpts = {}): SdkAdapter {
   return new SdkAdapter({
-    id: "codex",
+    id: opts.model ? `codex/${opts.model}` : "codex",
     client: opts.client ?? createCodexSdkClient(opts.model, opts.execute),
     capabilities: { passThroughCommands: false, canExecute: true, contextWindow: 272_000, costTier: "subscription" },
     limitRegex: /hit your usage limit|usage limit|rate limit/i,

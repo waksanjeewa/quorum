@@ -80,4 +80,17 @@ describe("runSetup (interactive flow)", () => {
     await runSetup(dir, fakeRl(["9"]), { detect });
     await expect(readFile(join(dir, ".quorum", "config.yaml"), "utf8")).rejects.toThrow();
   });
+
+  it("captures a specific claude model when the user names one", async () => {
+    // answers: pick [1] Claude, then model "claude-opus-4-8"
+    await runSetup(dir, fakeRl(["1", "claude-opus-4-8"]), { detect });
+    const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
+    expect(cfg.seats.proposer?.chain).toContain("claude/claude-opus-4-8");
+  });
+
+  it("uses the bare account default when no model is named", async () => {
+    await runSetup(dir, fakeRl(["1", ""]), { detect });
+    const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
+    expect(cfg.seats.proposer?.chain).toContain("claude");
+  });
 });
