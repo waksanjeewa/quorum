@@ -236,6 +236,28 @@ describe("runRoundtable — budget", () => {
   });
 });
 
+describe("runRoundtable — cost budget", () => {
+  it("stops when cumulative API cost exceeds maxCostUsd", async () => {
+    const config = cfg({ budgets: { max_turns_per_stage: 50, max_cost_usd: 0.05 } });
+    const session = await createSession(root, "pricey debate", config);
+    // each turn reports $0.02; after 3 turns ($0.06) it should trip the $0.05 budget
+    const costly = (id: string) =>
+      new MockAdapter({
+        id,
+        script: Array.from({ length: 30 }, () => ({ status: "ok" as const, content: "thinking", usage: { costUsd: 0.02 } })),
+      });
+    const result = await runRoundtable({
+      session,
+      seats: { proposer: costly("p"), critic: costly("c"), arbiter: costly("a") },
+      stages: ["brainstorm"],
+      now: clock(),
+    });
+    expect(result.stoppedReason).toBe("budget");
+    const events = await readEvents(session.dir);
+    expect(events.some((e) => e.type === "control" && e.action === "pause" && e.detail?.includes("cost budget"))).toBe(true);
+  });
+});
+
 describe("runRoundtable — human injection", () => {
   it("surfaces a queued human message to the next seat's context", async () => {
     const config = cfg({ budgets: { max_turns_per_stage: 1 } }, {

@@ -79,9 +79,22 @@ function createCodexSdkClient(model?: string): ChatClient {
       const opts: Record<string, unknown> = { skipGitRepoCheck: true, sandboxMode: "read-only" };
       if (model) opts["model"] = model;
       const thread = sessionId ? codex.resumeThread(sessionId, opts) : codex.startThread(opts);
-      const result = await thread.run(`${system}\n\n${user}`);
+      const result = (await thread.run(`${system}\n\n${user}`)) as {
+        finalResponse?: string;
+        text?: string;
+        usage?: { input_tokens?: number; output_tokens?: number; reasoning_output_tokens?: number };
+      };
       const text = result.finalResponse ?? result.text ?? "";
-      return { text, ...(thread.id ? { sessionId: thread.id } : sessionId ? { sessionId } : {}) };
+      // Subscription seat: report tokens but no costUsd (maxCostUsd tracks API seats only, DESIGN §7).
+      const u = result.usage;
+      const usage =
+        u && (u.input_tokens !== undefined || u.output_tokens !== undefined)
+          ? {
+              ...(u.input_tokens !== undefined ? { inputTokens: u.input_tokens } : {}),
+              ...(u.output_tokens !== undefined ? { outputTokens: (u.output_tokens ?? 0) + (u.reasoning_output_tokens ?? 0) } : {}),
+            }
+          : undefined;
+      return { text, ...(usage ? { usage } : {}), ...(thread.id ? { sessionId: thread.id } : sessionId ? { sessionId } : {}) };
     },
   };
 }

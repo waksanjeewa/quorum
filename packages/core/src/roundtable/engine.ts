@@ -65,6 +65,17 @@ function isAbort(err: unknown): boolean {
   return err instanceof Error && err.name === "AbortError";
 }
 
+/** Parse a duration like "2h", "90m", "45s", "1h30m" into milliseconds (0 if unparseable). */
+export function parseDurationMs(spec: string): number {
+  let ms = 0;
+  for (const match of spec.matchAll(/(\d+)\s*([hms])/gi)) {
+    const v = Number(match[1]);
+    const unit = (match[2] ?? "").toLowerCase();
+    ms += unit === "h" ? v * 3_600_000 : unit === "m" ? v * 60_000 : v * 1000;
+  }
+  return ms;
+}
+
 /**
  * Run the roundtable (DESIGN §6). Round-robin turns over active seats; models emit moves;
  * a PROPOSE_CONVERGE triggers a vote (arbiter breaks ties); convergence writes the stage artifact
@@ -83,6 +94,10 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
   const notes: string[] = [];
   /** Human messages already surfaced to a turn — robust to injections landing mid-turn. */
   let addressedHumans = 0;
+  /** Cumulative USD spent across API/HTTP seats (subscription seats report no cost). */
+  let spentUsd = 0;
+  const startMs = (opts.now ?? (() => new Date()))().getTime();
+  const wallClockMaxMs = config.budgets.wallClockMax ? parseDurationMs(config.budgets.wallClockMax) : 0;
 
   const emit = async (e: TranscriptEvent): Promise<void> => {
     await appendEvent(dir, e);
@@ -130,6 +145,7 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
         // Mark the injections this turn saw as addressed (only those surfaced at context-build time,
         // so an injection arriving mid-turn stays pending for the next turn).
         addressedHumans += ctx.pendingInjections.length;
+        spentUsd += result.usage?.costUsd ?? 0;
         const move = result.move ?? parseMove(result.content);
         await emit({
           ts: ts(),
@@ -219,6 +235,14 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
         const events = await readEvents(dir);
         if (turnInStage(events) > config.budgets.maxTurnsPerStage) {
           await emit({ ts: ts(), type: "control", action: "pause", by: "system", detail: `stage ${stage} hit turn budget` });
+          return { converged: false, stagesCompleted: completed, stoppedReason: "budget", notes };
+        }
+        if (config.budgets.maxCostUsd !== undefined && spentUsd >= config.budgets.maxCostUsd) {
+          await emit({ ts: ts(), type: "control", action: "pause", by: "system", detail: `hit cost budget ($${spentUsd.toFixed(4)} / $${config.budgets.maxCostUsd})` });
+          return { converged: false, stagesCompleted: completed, stoppedReason: "budget", notes };
+        }
+        if (wallClockMaxMs > 0 && now().getTime() - startMs >= wallClockMaxMs) {
+          await emit({ ts: ts(), type: "control", action: "pause", by: "system", detail: `hit wall-clock budget (${config.budgets.wallClockMax})` });
           return { converged: false, stagesCompleted: completed, stoppedReason: "budget", notes };
         }
         const active = seatOrder();

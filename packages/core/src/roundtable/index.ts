@@ -3,6 +3,7 @@ export { parseMove } from "./moves.js";
 export { ROLE_PROMPTS, buildRoleInstructions, type RoleInstructionFn } from "./roles.js";
 export {
   runRoundtable,
+  parseDurationMs,
   type SeatRunner,
   type RunRoundtableOpts,
   type RoundtableResult,
