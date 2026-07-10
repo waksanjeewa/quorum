@@ -79,3 +79,4 @@ tweak settings, or hit STOP.
 | `/doctor` | readiness check |
 | `/pause` `/resume` `/stop` | control the run |
 | `quorum start "<goal>"` | one-shot, non-interactive |
+| `quorum resume [id]` | reopen a stopped/crashed session (latest if no id) |
