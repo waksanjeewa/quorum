@@ -1,8 +1,8 @@
 ---
 id: 320
 title: Benchmark — does the roundtable beat a single model?
-status: todo
-owner: null
+status: in_progress
+owner: claude-opus-4-8
 deps: [050]
 owned_paths: ["bench/"]
 acceptance:
