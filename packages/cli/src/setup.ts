@@ -113,11 +113,16 @@ async function pickModel(rl: Readline, models: Array<{ id: string; free: boolean
   return ans; // typed a model id directly
 }
 
-/** Ask which specific model to use for a subscription seat (claude/codex). Blank = account default. */
+/** Ask which specific model to use for a subscription seat (claude/codex) via a numbered menu. */
 async function askModel(rl: Readline, label: string, suggestions: string[], bareId: string): Promise<string> {
-  console.log(`  ${C.dim(`${label} models: ${suggestions.join(", ")} — or leave blank for your account default`)}`);
-  const m = await ask(rl, `  Which ${label} model? [default] : `);
-  return m ? `${bareId}/${m}` : bareId;
+  console.log(`\n  ${label} — which model?`);
+  console.log(`    ${C.dim("[0]")} account default ${C.dim("(recommended)")}`);
+  suggestions.forEach((m, i) => console.log(`    ${C.dim(`[${i + 1}]`)} ${m}`));
+  const a = await ask(rl, `  Pick a number (or type a model id) [0] : `);
+  if (!a || a === "0") return bareId;
+  const n = Number(a);
+  if (Number.isInteger(n) && n >= 1 && n <= suggestions.length) return `${bareId}/${suggestions[n - 1]}`;
+  return `${bareId}/${a}`; // typed a custom id
 }
 
 interface ApiProvider {

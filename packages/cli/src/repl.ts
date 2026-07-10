@@ -152,6 +152,7 @@ export async function repl(projectRoot: string): Promise<void> {
           if (extra.length) console.log(C.dim(`\n  Also logged in (not in your config): ${extra.map((e) => e.id).join(", ")} — add with /models`));
           const unique = new Set(Object.values(config.seats).flatMap((s) => s.chain));
           if (unique.size === 1) console.log(C.dim(`  All seats use one model — /models to add others for real multi-model debate.`));
+          console.log(C.dim(`  Pick specific models (Opus 4.8, GPT-5.5, free OpenRouter…) with /models or the dashboard ⚙ Settings.`));
           return;
         }
         case "status": {
