@@ -120,6 +120,11 @@ export class QuorumHttpServer {
           const running = await this.daemon.createSession(String(body.goal ?? "Untitled goal"), config as SessionConfig);
           return json(res, 201, running.status());
         }
+        // POST /sessions/:id/reopen — reopen an existing session from disk (distinct from pause-resume).
+        if (parts[2] === "reopen" && req.method === "POST" && parts[1]) {
+          const running = await this.daemon.resumeSession(parts[1]);
+          return json(res, 200, running.status());
+        }
         const running = parts[1] ? this.daemon.get(parts[1]) : undefined;
         if (!running) return json(res, 404, { error: "session not found" });
         return this.routeSession(req, res, url, parts.slice(2), running);

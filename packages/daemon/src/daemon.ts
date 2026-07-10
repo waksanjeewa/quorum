@@ -1,4 +1,5 @@
-import { createSession, type ExecutorFactory, type ReviewFn, type SeatRunner, type SessionConfig, type Stage } from "@quorum/core";
+import { createSession, openSession, sessionsRoot, type ExecutorFactory, type ReviewFn, type SeatRunner, type Session, type SessionConfig, type Stage } from "@quorum/core";
+import { readdir } from "node:fs/promises";
 import type { AdapterRegistry } from "@quorum/adapters";
 import { buildAdapterRegistry, buildExecutorFactory, buildReviewFn } from "./registry.js";
 import { RunningSession } from "./session-runner.js";
@@ -45,6 +46,29 @@ export class Daemon {
   async createSession(goal: string, config: SessionConfig): Promise<RunningSession> {
     const now = this.opts.now ?? (() => new Date());
     const session = await createSession(this.opts.projectRoot, goal, config, { now: now() });
+    return this.startRunning(session, config);
+  }
+
+  /** Resume an existing on-disk session (crash-safe: state is all in files). */
+  async resumeSession(id: string): Promise<RunningSession> {
+    const existing = this.sessions.get(id);
+    if (existing) return existing;
+    const session = await openSession(this.opts.projectRoot, id);
+    return this.startRunning(session, session.config);
+  }
+
+  /** Session ids on disk (newest first), for `quorum resume` with no id. */
+  async listSessionIds(): Promise<string[]> {
+    try {
+      const names = await readdir(sessionsRoot(this.opts.projectRoot));
+      return names.filter((n) => !n.startsWith(".")).sort().reverse();
+    } catch {
+      return [];
+    }
+  }
+
+  private async startRunning(session: Session, config: SessionConfig): Promise<RunningSession> {
+    const now = this.opts.now ?? (() => new Date());
     const { registry, summarizer } = this.buildRegistry(config);
     const executorFactory = this.opts.executorFactory ?? buildExecutorFactory(config);
     const review =

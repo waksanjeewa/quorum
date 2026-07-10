@@ -136,6 +136,25 @@ describe("QuorumHttpServer", () => {
     expect(transcript).toContain("pivot to plan B");
   });
 
+  it("resumes a session from disk after it was stopped", async () => {
+    const hanging: { registry: AdapterRegistry } = {
+      registry: { get: (id) => (id === "m" ? new MockAdapter({ id, script: [{ kind: "hang" }] }) : undefined) },
+    };
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: () => hanging, stages: ["brainstorm"] });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+    const cfg = parseSessionConfig({ seats: { proposer: { chain: ["m"] }, critic: { chain: ["m"] } } });
+    const created = await (await api("/sessions", "POST", { goal: "resumable", config: cfg })).json();
+    await api(`/sessions/${created.id}/stop`, "POST");
+
+    // resume from disk — new RunningSession over the same id
+    const resumed = await (await api(`/sessions/${created.id}/reopen`, "POST")).json();
+    expect(resumed.id).toBe(created.id);
+    expect(await server.daemon.listSessionIds()).toContain(created.id);
+    await server.daemon.get(created.id)!.stop();
+  });
+
   it("reads and validates config over the API (dashboard settings)", async () => {
     server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
     const info = await server.listen();

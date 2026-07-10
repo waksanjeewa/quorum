@@ -2,7 +2,7 @@
 import { writeFile, mkdir, access } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join } from "node:path";
-import { QuorumHttpServer, loadConfig, doctorReport, DEFAULT_CONFIG_YAML } from "@quorum/daemon";
+import { QuorumHttpServer, loadConfig, doctorReport, DEFAULT_CONFIG_YAML, type RunningSession } from "@quorum/daemon";
 import { renderDashboard } from "@quorum/dashboard";
 import { requireClient } from "./client.js";
 import { control, inject, listSessions, statusOf, streamEvents } from "./commands.js";
@@ -19,6 +19,7 @@ Usage:
   quorum init               Scaffold a starter .quorum/config.yaml here
   quorum doctor             Check which model seats are logged in / reachable
   quorum start "<goal>"     Deliberate → plan → build (autonomous; needs a git repo to execute)
+  quorum resume [id]        Resume a stopped/crashed session (latest if no id) — it never dies
   quorum status             Show all sessions
   quorum inject "<msg>"     Send a message into the latest session (without stopping it)
   quorum pause | resume     Pause / resume the latest session
@@ -46,6 +47,8 @@ async function main(): Promise<void> {
       return doctor(projectRoot);
     case "start":
       return start(projectRoot, args.join(" ") || "Untitled goal");
+    case "resume":
+      return resume(projectRoot, args[0]);
     case "status": {
       const client = await requireClient(projectRoot);
       const sessions = await listSessions(client);
@@ -174,9 +177,27 @@ async function start(projectRoot: string, goal: string): Promise<void> {
   const server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
   const info = await server.listen();
   const running = await server.daemon.createSession(goal, config);
+  await hostSession(server, running, info.url, "started");
+}
 
-  console.log(`\n  Quorum session \x1b[1m${running.id}\x1b[0m started`);
-  console.log(`  Dashboard/API: ${info.url}`);
+async function resume(projectRoot: string, id?: string): Promise<void> {
+  const config = await loadConfig(projectRoot);
+  const env = await resolveSecretsEnv(knownKeyEnvs(config));
+  const server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
+  const info = await server.listen();
+  const target = id ?? (await server.daemon.listSessionIds())[0];
+  if (!target) {
+    console.log("No sessions to resume.");
+    await server.close();
+    return;
+  }
+  const running = await server.daemon.resumeSession(target);
+  await hostSession(server, running, info.url, "resumed");
+}
+
+async function hostSession(server: QuorumHttpServer, running: RunningSession, url: string, verb: string): Promise<void> {
+  console.log(`\n  Quorum session \x1b[1m${running.id}\x1b[0m ${verb}`);
+  console.log(`  Dashboard/API: ${url}`);
   console.log(`  Autonomous: deliberate → plan → build (needs a git repo to execute).`);
   console.log(`  Ctrl+C stops the session.\n`);
 
