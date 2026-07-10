@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quorum — multiple AI models plan and build together</title>
+<meta name="description" content="Local-first tool where multiple AI models collaborate on one goal — plan and build together, with usage-limit-aware handoff. Your AI session never dies." />
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#12151d; --line:#232838; --fg:#e7ebf3; --muted:#9aa4b8;
+    --brand:#c026d3; --brand2:#6366f1; --accent:#22d3ee; --green:#22c55e;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
+  .btn{display:inline-block;padding:12px 20px;border-radius:10px;font-weight:600;border:1px solid var(--line)}
+  .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none}
+  .btn.ghost{background:transparent;color:var(--fg)}
+  header{position:sticky;top:0;background:rgba(11,13,18,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
+  header .wrap{display:flex;align-items:center;gap:16px;height:60px}
+  .logo{font-weight:800;font-size:18px}
+  .logo .d{color:var(--brand)}
+  header nav{margin-left:auto;display:flex;gap:20px;align-items:center}
+  header nav a{color:var(--muted);font-size:14px}
+  .hero{padding:90px 0 70px;text-align:center;background:radial-gradient(60% 60% at 50% 0%,rgba(192,38,211,.15),transparent)}
+  .hero h1{font-size:52px;line-height:1.08;margin:0 0 16px;font-weight:800;letter-spacing:-.02em}
+  .hero h1 .grad{background:linear-gradient(120deg,var(--brand),var(--brand2),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:20px;color:var(--muted);max-width:720px;margin:0 auto 28px}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:22px}
+  .install{display:inline-flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+  .install .dollar{color:var(--muted)}
+  .pipeline{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin:44px auto 0;max-width:760px}
+  .pipeline .step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;flex:1;min-width:150px}
+  .pipeline .step b{display:block;font-size:14px}
+  .pipeline .step span{font-size:12px;color:var(--muted)}
+  .pipeline .arrow{color:var(--brand);font-size:20px}
+  section{padding:64px 0;border-top:1px solid var(--line)}
+  h2.title{font-size:32px;text-align:center;margin:0 0 8px;letter-spacing:-.01em}
+  p.sub{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 40px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card .ico{font-size:22px}
+  .card h3{margin:10px 0 6px;font-size:17px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .models{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .chip{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px}
+  .chip .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+  .chip .tag.free{color:var(--green);border-color:var(--green)}
+  .chip .tag.exec{color:var(--accent);border-color:var(--accent)}
+  .proof{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(34,211,238,.08));border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;max-width:760px;margin:0 auto}
+  .proof .big{font-size:40px;font-weight:800;background:linear-gradient(120deg,var(--brand),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .steps{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .steps .s{display:flex;gap:14px;align-items:flex-start}
+  .steps .n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+  .steps code{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+  footer{padding:40px 0;border-top:1px solid var(--line);color:var(--muted);text-align:center;font-size:14px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr 1fr}.hero h1{font-size:38px}}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}header nav a:not(.btn){display:none}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="logo">Quo<span class="d">◆</span>rum</div>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#models">Models</a>
+    <a href="#how">How it works</a>
+    <a class="btn ghost" href="https://github.com/waksanjeewa/quorum">GitHub</a>
+  </nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <h1>Your AI session <span class="grad">never dies</span>.</h1>
+  <p class="lead">Multiple AI models sit at one table — brainstorming, planning, and <b>building</b> together — and hand off to each other the moment one hits its usage limit. Local-first. You're always in the room.</p>
+  <div class="cta">
+    <a class="btn primary" href="#get-started">Get started</a>
+    <a class="btn ghost" href="https://github.com/waksanjeewa/quorum">Star on GitHub ★</a>
+  </div>
+  <div class="install"><span class="dollar">$</span> npm install -g quorum</div>
+  <div class="pipeline">
+    <div class="step"><b>🗣 Roundtable</b><span>proposer · critic · arbiter debate &amp; converge</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>🔨 Workshop</b><span>build it in an isolated git worktree</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>✅ Merged</b><span>verified by a reviewer, committed</span></div>
+  </div>
+</div></div>
+
+<section id="features"><div class="wrap">
+  <h2 class="title">Not a router. A team.</h2>
+  <p class="sub">Other tools pick one model per request. Quorum makes several models collaborate on one goal — and keeps going when limits hit.</p>
+  <div class="grid">
+    <div class="card"><div class="ico">♻️</div><h3>Never runs out</h3><p>Each seat is a failover chain. Hit your Claude limit mid-thought? Codex reads the shared transcript and continues the same seat. Then a free model. The session survives.</p></div>
+    <div class="card"><div class="ico">🗳️</div><h3>Real deliberation</h3><p>Proposer proposes, critic attacks (no early rubber-stamps), arbiter decides. Blind-judged, the roundtable beat a single model of the same kind.</p></div>
+    <div class="card"><div class="ico">🔨</div><h3>It actually builds</h3><p>Plans become code: executors edit files in isolated git worktrees, run your acceptance checks, get reviewed, and merge — in parallel, across independent tasks.</p></div>
+    <div class="card"><div class="ico">💸</div><h3>Frugal by default</h3><p>Free models (Ollama, OpenRouter :free) do the bulk drafting; your paid models are spent only on verifying and improving. Hard cost + time caps.</p></div>
+    <div class="card"><div class="ico">🔒</div><h3>Local-first &amp; private</h3><p>No server, no accounts, no telemetry. Prompts and transcripts stay on your machine; API keys live in your OS Keychain, never in a file.</p></div>
+    <div class="card"><div class="ico">🧑‍💻</div><h3>You're at the table</h3><p>Watch the debate live in a shell or web dashboard, drop a message in mid-run without pausing, tweak models in a visual settings panel, and a big red STOP.</p></div>
+    <div class="card"><div class="ico">⏸️</div><h3>Resumable</h3><p>Everything is plain files on disk. Close your laptop, come back, <code>quorum resume</code> — it picks up exactly where it left off.</p></div>
+    <div class="card"><div class="ico">🔁</div><h3>Bring your logins</h3><p>Reuses your existing Claude Code and Codex logins — no API keys required for the models you already pay for.</p></div>
+    <div class="card"><div class="ico">🧩</div><h3>Extensible</h3><p>Any OpenAI-compatible endpoint — OpenRouter, a local gateway, or a lab API — plugs in. New agent platforms need one small adapter.</p></div>
+  </div>
+</div></section>
+
+<section id="models"><div class="wrap">
+  <h2 class="title">Bring any models — mix them freely</h2>
+  <p class="sub">Claude and Codex are your executors (they can build); everything else deliberates, drafts, and verifies. Pick order and sub-models in the dashboard.</p>
+  <div class="models">
+    <div class="chip">Claude <span class="tag exec">can build</span></div>
+    <div class="chip">Codex / GPT <span class="tag exec">can build</span></div>
+    <div class="chip">Ollama <span class="tag free">free · local</span></div>
+    <div class="chip">OpenRouter <span class="tag free">free &amp; paid</span></div>
+    <div class="chip">Nous Hermes <span class="tag free">via OpenRouter</span></div>
+    <div class="chip">OpenAI API</div>
+    <div class="chip">Anthropic API</div>
+    <div class="chip">Gemini API</div>
+    <div class="chip">Any OpenAI-compatible gateway</div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="proof">
+    <div class="big">2 – 0</div>
+    <p style="margin:6px 0 0">In a blind head-to-head, the <b>roundtable beat a single model</b> of the same kind on every goal — judged by a different model that didn't know which was which. A signal that deliberation, not just a bigger model, improves the answer.</p>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <h2 class="title" id="get-started">Get started in a minute</h2>
+  <p class="sub">Needs Node ≥ 20 and git. Reuse the logins you already have.</p>
+  <div class="steps">
+    <div class="s"><div class="n">1</div><div><b>Install</b><br><code>npm install -g quorum</code> &nbsp;·&nbsp; or from source: <code>curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash</code></div></div>
+    <div class="s"><div class="n">2</div><div><b>Log in to models you want</b><br><code>claude login</code> &nbsp; <code>codex login</code> &nbsp; or paste an API key in setup (saved to your Keychain), or <code>ollama serve</code> for free local.</div></div>
+    <div class="s"><div class="n">3</div><div><b>Go</b><br><code>quorum</code> opens an interactive shell — pick models with <code>/models</code>, then just type a goal like <i>“build me a CSV-to-JSON CLI.”</i> In a git repo it plans <b>and builds</b>.</div></div>
+  </div>
+  <div style="text-align:center;margin-top:34px">
+    <a class="btn primary" href="https://github.com/waksanjeewa/quorum#readme">Read the docs</a>
+    <a class="btn ghost" href="https://github.com/waksanjeewa/quorum">GitHub</a>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  Quorum · MIT licensed · <a href="https://github.com/waksanjeewa/quorum">github.com/waksanjeewa/quorum</a><br>
+  Local-first. Your keys, your machine, your models.
+</div></footer>
+</body>
+</html>

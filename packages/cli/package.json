@@ -1,6 +1,6 @@
 {
   "name": "quorum",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Local-first tool where multiple AI models collaborate on one goal — plan and build together, with usage-limit-aware handoff.",
   "type": "module",
   "license": "MIT",

@@ -3,6 +3,8 @@
 [![CI](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**🌐 Site:** [waksanjeewa.github.io/quorum](https://waksanjeewa.github.io/quorum) &middot; **Docs:** [Getting started](docs/getting-started.md)
+
 **Your AI session never dies.** Multiple AI models collaborate on one goal — brainstorming,
 planning, and building together — handing off to each other when usage limits hit, with you able to
 step in at any moment without stopping the work.
