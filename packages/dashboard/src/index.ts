@@ -47,11 +47,12 @@ input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); bo
 
 const SEAT_COLORS = ["#0891b2", "#a21caf", "#16a34a", "#ca8a04", "#2563eb"];
 
-function script(token: string): string {
+function script(token: string, baseUrl: string): string {
   return `
 const TOKEN = ${JSON.stringify(token)};
+const BASE = ${JSON.stringify(baseUrl)};
 const H = { authorization: "Bearer " + TOKEN, "content-type": "application/json" };
-const api = (p, m="GET", b) => fetch(p, { method:m, headers:H, body: b?JSON.stringify(b):undefined });
+const api = (p, m="GET", b) => fetch(BASE + p, { method:m, headers:H, body: b?JSON.stringify(b):undefined });
 const feed = document.getElementById("feed");
 const seatsEl = document.getElementById("seats");
 const stageEl = document.getElementById("stage");
@@ -106,7 +107,7 @@ async function boot() {
   document.getElementById("sid").textContent = sessionId;
   await refreshSeats();
   setInterval(refreshSeats, 2000);
-  const es = new EventSource("/sessions/"+sessionId+"/events?token="+encodeURIComponent(TOKEN));
+  const es = new EventSource(BASE + "/sessions/"+sessionId+"/events?token="+encodeURIComponent(TOKEN));
   es.onmessage = ev => addEvent(JSON.parse(ev.data));
 }
 
@@ -140,10 +141,18 @@ boot();
 `;
 }
 
-/** Render the full self-contained dashboard page with the daemon's bearer token embedded. */
-export function renderDashboard(token: string): string {
+/**
+ * Render the full self-contained dashboard page with the daemon's bearer token embedded.
+ * Pass `baseUrl` (the daemon's http://127.0.0.1:PORT) when hosting inside a VS Code webview, so the
+ * page's fetch/EventSource use absolute URLs; a CSP allowing that origin is then added. Leave it ""
+ * for the browser case (served by the daemon at its own origin, relative URLs).
+ */
+export function renderDashboard(token: string, baseUrl = ""): string {
+  const csp = baseUrl
+    ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src ${baseUrl};"/>`
+    : "";
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>${csp}
 <title>Quorum</title><style>${STYLE}</style></head>
 <body>
 <header>
@@ -176,7 +185,7 @@ export function renderDashboard(token: string): string {
     <button type="submit">Send</button>
   </form>
 </main>
-<script>${script(token)}</script>
+<script>${script(token, baseUrl)}</script>
 </body></html>`;
 }
 

@@ -1,0 +1,42 @@
+{
+  "name": "quorum-vscode",
+  "displayName": "Quorum",
+  "description": "Multiple AI models plan and build together — inside VS Code.",
+  "version": "0.5.0",
+  "publisher": "quorum",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "quorum.open",
+        "title": "Quorum: Open Panel"
+      },
+      {
+        "command": "quorum.start",
+        "title": "Quorum: Start a Goal"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@quorum/core": "workspace:*",
+    "@quorum/daemon": "workspace:*",
+    "@quorum/dashboard": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.125.0"
+  }
+}

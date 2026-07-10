@@ -23,6 +23,18 @@ describe("renderDashboard", () => {
     expect(renderDashboard('a"b')).toContain('"a\\"b"');
   });
 
+  it("uses relative URLs by default (served by the daemon), no CSP", () => {
+    expect(html).toContain('const BASE = ""');
+    expect(html).not.toContain("Content-Security-Policy");
+  });
+
+  it("uses an absolute base URL + CSP when hosted in a webview", () => {
+    const wv = renderDashboard("tok", "http://127.0.0.1:5555");
+    expect(wv).toContain('const BASE = "http://127.0.0.1:5555"');
+    expect(wv).toContain("Content-Security-Policy");
+    expect(wv).toContain("connect-src http://127.0.0.1:5555");
+  });
+
   it("includes the settings panel wired to the config API", () => {
     expect(html).toContain('id="settings"'); // ⚙ button
     expect(html).toContain('id="settingsPanel"');
