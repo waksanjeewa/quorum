@@ -4,6 +4,13 @@ Quorum's founding principle: **no agent ever owns the task.** All state — the 
 plan, the task ledger — lives in plain files on disk. Any model can take any seat at any time, so
 handoff isn't failover, it's the normal lifecycle.
 
+**Quorum itself is the orchestrator — not one of the models.** The engine runs the turn loop, hands
+off on usage limits, assigns build tasks, runs acceptance checks, and merges. The models are just
+players filling **seats** (proposer, critic, arbiter); **Claude and Codex are the executors** — the
+only seats that can edit files and build — while free models deliberate, draft, and verify. This is
+what separates Quorum from a *router* (which picks one model per request): here several models
+collaborate on one goal, cross-check each other, and cover for one another when limits hit.
+
 ## The pipeline
 
 ```mermaid

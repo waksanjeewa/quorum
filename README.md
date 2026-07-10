@@ -30,17 +30,43 @@ API models or a local Ollama model so a session can run for free.
 > [e2e/SMOKE-RESULTS.md](e2e/SMOKE-RESULTS.md)). See [DESIGN.md](DESIGN.md) for the full vision and
 > [tasks/](tasks/) for the build ledger.
 
+## Why Quorum (vs other AI tools)
+
+Most AI tools give you **one model per request**, or route to whichever model is "best." Quorum makes
+several models work **together** on one goal — and keeps going when one runs out.
+
+| | Typical AI tool / router | Quorum |
+|---|---|---|
+| **Models** | one model answers | several collaborate on one goal |
+| **Usage limits** | you stop, wait, or switch by hand | automatic handoff — the session never dies |
+| **Quality** | the model checks its own work | a *different* model critiques & reviews it |
+| **Building code** | you copy-paste it back yourself | builds in isolated git worktrees, verified, merged |
+| **Cost** | a paid model for everything | free models draft, paid models only verify |
+| **Privacy** | cloud — your data leaves | local-first — keys stay in your OS Keychain |
+| **Ownership** | locked to one vendor | mix any models; state is plain files you own |
+
 ## How it works
 
-Multiple models sit at a table with distinct roles — **proposer**, **critic**, **arbiter** — and
-deliberate turn by turn over a shared transcript until they converge on an answer. All state lives in
-plain files on disk, so **no agent ever owns the task**: when one model's usage window closes, the
-next model in that seat's failover chain reads the transcript and picks up exactly where it left off.
-If every primary is exhausted, a free local model keeps things going.
+**Quorum itself is the orchestrator — not one of the models.** The engine decides who speaks when,
+hands off the moment a model hits its usage limit, assigns the building, runs your checks, and merges.
+The models just take **seats** at the table, each with a distinct role:
+
+- **Proposer** — advances one concrete approach toward the goal. Decisive and specific.
+- **Critic** — hunts for weaknesses, gaps, and risks, and **can't rubber-stamp early** (no APPROVE
+  before turn 3). This is where mistakes get caught.
+- **Arbiter** — weighs proposal against critique, breaks ties, and calls when it's good enough.
+
+They deliberate turn by turn over a **shared transcript** until they converge. **Claude and Codex are
+the executors** — the only models that can edit files and build; free models (Ollama, OpenRouter)
+deliberate, draft, and verify. Every seat is a **failover chain**: all state lives in plain files, so
+**no model ever owns the task** — when one model's usage window closes, the next model in that seat's
+chain reads the transcript and picks up exactly where it left off. If every primary is exhausted, a
+free local model keeps things going.
 
 ```
-Goal → [Roundtable: brainstorm] → [Roundtable: plan] → spec.md + tasks/
-        proposer · critic · arbiter, with you able to inject anytime
+Goal → Brainstorm → Plan → Decompose → Build → Verify + Review → Merge
+       └─ proposer · critic · arbiter debate ─┘  └ executor in a git worktree, a 2nd model judges ┘
+       (you can inject a message at any point, without stopping the work)
 ```
 
 ## Getting started
