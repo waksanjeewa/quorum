@@ -18,3 +18,4 @@ export {
 } from "./execute.js";
 export { decomposePlan, parseTasksJson, type DecomposeOpts } from "./decompose.js";
 export { triage, quickTriage, parseTriage, type TriageResult } from "./triage.js";
+export { reviewDiff, parseReview, type DiffReview, type ReviewInput } from "./review.js";

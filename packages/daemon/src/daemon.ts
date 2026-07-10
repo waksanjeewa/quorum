@@ -1,6 +1,6 @@
 import { createSession, type ExecutorFactory, type ReviewFn, type SeatRunner, type SessionConfig, type Stage } from "@quorum/core";
 import type { AdapterRegistry } from "@quorum/adapters";
-import { buildAdapterRegistry, buildExecutorFactory } from "./registry.js";
+import { buildAdapterRegistry, buildExecutorFactory, buildReviewFn } from "./registry.js";
 import { RunningSession } from "./session-runner.js";
 
 export interface DaemonOpts {
@@ -47,6 +47,11 @@ export class Daemon {
     const session = await createSession(this.opts.projectRoot, goal, config, { now: now() });
     const { registry, summarizer } = this.buildRegistry(config);
     const executorFactory = this.opts.executorFactory ?? buildExecutorFactory(config);
+    const review =
+      this.opts.review ??
+      (this.opts.autonomous
+        ? buildReviewFn(config, { ...(this.opts.env ? { env: this.opts.env } : {}), ...(this.opts.fetchImpl ? { fetchImpl: this.opts.fetchImpl } : {}) })
+        : undefined);
     const running = new RunningSession({
       session,
       registry,
@@ -56,7 +61,7 @@ export class Daemon {
       projectRoot: this.opts.projectRoot,
       autonomous: this.opts.autonomous ?? false,
       executorFactory,
-      ...(this.opts.review ? { review: this.opts.review } : {}),
+      ...(review ? { review } : {}),
     });
     this.sessions.set(running.id, running);
     await running.start();

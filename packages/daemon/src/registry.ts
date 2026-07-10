@@ -1,4 +1,4 @@
-import type { SeatRunner, SessionConfig } from "@quorum/core";
+import { reviewDiff, type ReviewInput, type SeatRunner, type SessionConfig } from "@quorum/core";
 import {
   createClaudeAdapter,
   createCodexAdapter,
@@ -92,6 +92,24 @@ export function buildTriageRunner(config: SessionConfig, opts: BuildRegistryOpts
   const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))];
   const preferred = ids.find(isExecutorModel) ?? ids[0];
   return preferred ? registry.get(preferred) : undefined;
+}
+
+/**
+ * A review function that has a capable model judge each executor diff before merge (the subjective
+ * gate). Prefers the critic seat's first model — in frugal mode that's the PAID verifier, so paid
+ * quota is spent on judgement. Returns undefined if no model can be built (falls back to acceptance-only).
+ */
+export function buildReviewFn(
+  config: SessionConfig,
+  opts: BuildRegistryOpts = {},
+): ((input: ReviewInput) => Promise<{ approved: boolean; reason?: string }>) | undefined {
+  const { registry } = buildAdapterRegistry(config, opts);
+  const criticChain = config.seats["critic"]?.chain ?? [];
+  const anyChain = Object.values(config.seats).flatMap((s) => s.chain);
+  const reviewerId = criticChain.find(isExecutorModel) ?? criticChain[0] ?? anyChain.find(isExecutorModel) ?? anyChain[0];
+  const runner = reviewerId ? registry.get(reviewerId) : undefined;
+  if (!runner) return undefined;
+  return (input) => reviewDiff(runner, input);
 }
 
 /** Names of the executor-capable models configured across all seats (for `quorum doctor` / gating). */
