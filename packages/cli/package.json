@@ -1,6 +1,6 @@
 {
   "name": "quorum",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Local-first tool where multiple AI models collaborate on one goal — plan and build together, with usage-limit-aware handoff.",
   "type": "module",
   "license": "MIT",
@@ -8,7 +8,6 @@
     "quorum": "./dist/index.js"
   },
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -21,14 +20,18 @@
     "url": "https://github.com/waksanjeewa/quorum.git"
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "bundle": "node ../../scripts/bundle-cli.mjs",
+    "prepack": "node ../../scripts/bundle-cli.mjs"
   },
-  "dependencies": {
-    "@quorum/daemon": "workspace:*",
-    "@quorum/dashboard": "workspace:*",
-    "@quorum/core": "workspace:*"
+  "optionalDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.205",
+    "@openai/codex-sdk": "^0.143.0"
   },
   "devDependencies": {
+    "@quorum/daemon": "workspace:*",
+    "@quorum/dashboard": "workspace:*",
+    "@quorum/core": "workspace:*",
     "@quorum/adapters": "workspace:*",
     "vitest": "^2.1.8",
     "yaml": "^2.6.1"

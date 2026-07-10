@@ -125,6 +125,7 @@ Run the tests with `corepack pnpm test`. For a manual check against real models,
 - **[Configuration](docs/configuration.md)** — model ids (incl. `claude/<model>`, OpenRouter free
   models, Hermes, gateways), frugal mode, budgets
 - **[Architecture](docs/architecture.md)** — how the roundtable, failover, and workshop work (with diagrams)
+- **[Publishing](docs/publishing.md)** — how to go public + `npm publish` the one-liner
 
 ## Cost policy: frugal by default
 

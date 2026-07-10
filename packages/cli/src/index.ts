@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { writeFile, mkdir, access } from "node:fs/promises";
+import { writeFile, mkdir, access, readFile } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { QuorumHttpServer, loadConfig, doctorReport, DEFAULT_CONFIG_YAML, type RunningSession } from "@quorum/daemon";
 import { renderDashboard } from "@quorum/dashboard";
 import { requireClient } from "./client.js";
@@ -27,10 +28,22 @@ Usage:
   quorum attach [id]        Stream a running session's transcript (Ctrl+C detaches, does not stop)
 `;
 
+/** Read this package's version (works for both the tsc dev build and the published bundle). */
+async function version(): Promise<string> {
+  try {
+    const pkgPath = join(fileURLToPath(new URL(".", import.meta.url)), "..", "package.json");
+    return JSON.parse(await readFile(pkgPath, "utf8")).version ?? "0.0.0";
+  } catch {
+    return "unknown";
+  }
+}
+
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
   const projectRoot = process.cwd();
 
+  if (cmd === "--version" || cmd === "-v") return void console.log(await version());
+  if (cmd === "--help" || cmd === "-h" || cmd === "help") return void console.log(HELP);
   if (!cmd) return repl(projectRoot); // no args → interactive shell
 
   switch (cmd) {
