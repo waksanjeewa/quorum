@@ -6,4 +6,6 @@ export { QuorumHttpServer, type HttpServerOpts, type ListenInfo } from "./http-s
 export { buildAdapterRegistry, buildExecutorFactory, buildTriageRunner, buildReviewFn, executorModelIds, type BuildRegistryOpts, type BuiltRegistry } from "./registry.js";
 export { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
 export { doctorReport, type SeatCheck } from "./doctor.js";
+export { setSecret, getSecret, deleteSecret, keychainAvailable, knownKeyEnvs, resolveSecretsEnv } from "./secrets.js";
+export { MODEL_CATALOG, configToYaml, keyStatus, type StructuredConfig } from "./settings.js";
 export { PauseGate, gatedRunner } from "./pause-gate.js";

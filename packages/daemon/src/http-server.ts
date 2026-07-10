@@ -6,6 +6,9 @@ import { parse as parseYaml } from "yaml";
 import { parseSessionConfig, type SessionConfig, type TranscriptEvent } from "@quorum/core";
 import { Daemon, type DaemonOpts } from "./daemon.js";
 import { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
+import { doctorReport } from "./doctor.js";
+import { setSecret, getSecret, keychainAvailable } from "./secrets.js";
+import { configToYaml, keyStatus, MODEL_CATALOG } from "./settings.js";
 import type { RunningSession } from "./session-runner.js";
 
 export interface HttpServerOpts extends DaemonOpts {
@@ -112,6 +115,45 @@ export class QuorumHttpServer {
           await writeFile(path, yaml.endsWith("\n") ? yaml : yaml + "\n", "utf8");
           return json(res, 200, { ok: true, note: "Saved — applies to the next session." });
         }
+      }
+
+      // /settings — structured model manager for the dashboard.
+      if (parts[0] === "settings" && req.method === "GET") {
+        const config = await loadConfig(this.projectRoot);
+        const [doctor, providerKeys] = await Promise.all([
+          doctorReport(config).catch(() => []),
+          keyStatus(config),
+        ]);
+        return json(res, 200, {
+          seats: Object.fromEntries(Object.entries(config.seats).map(([n, s]) => [n, { chain: s.chain }])),
+          budgets: config.budgets,
+          providers: config.providers,
+          doctor,
+          catalog: MODEL_CATALOG,
+          keychainAvailable: keychainAvailable(),
+          providerKeys, // which key envs already have a value
+        });
+      }
+      if (parts[0] === "settings" && (req.method === "PUT" || req.method === "POST")) {
+        const body = await readJson(req);
+        try {
+          const yaml = configToYaml(body as unknown as Parameters<typeof configToYaml>[0]);
+          parseSessionConfig(parseYaml(yaml)); // validate
+          await mkdir(join(this.projectRoot, ".quorum"), { recursive: true });
+          await writeFile(join(this.projectRoot, ".quorum", "config.yaml"), yaml, "utf8");
+          return json(res, 200, { ok: true, note: "Saved — applies to the next session.", yaml });
+        } catch (err) {
+          return json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+      // POST /keys { env, value } — store an API key in the OS Keychain.
+      if (parts[0] === "keys" && req.method === "POST") {
+        const body = await readJson(req);
+        const env = String(body.env ?? "");
+        const value = String(body.value ?? "");
+        if (!/^[A-Z0-9_]+$/.test(env) || !value) return json(res, 400, { error: "env (UPPER_SNAKE) and value required" });
+        const saved = await setSecret(env, value);
+        return json(res, 200, { ok: saved, note: saved ? "Saved to your Keychain." : "No Keychain available — export the env var instead." });
       }
 
       // /sessions ...

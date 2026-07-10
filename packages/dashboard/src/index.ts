@@ -43,6 +43,25 @@ input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); bo
 .sheet .row { display:flex; gap:8px; align-items:center; }
 .sheet .msg { font-size:12px; flex:1; }
 .sheet .msg.err { color:var(--stop); } .sheet .msg.ok { color:#16a34a; }
+#settingsBody { overflow:auto; display:flex; flex-direction:column; gap:14px; }
+.seatCard { border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+.seatCard h3 { margin:0 0 6px; font-size:13px; text-transform:capitalize; }
+.seatCard .sub { font-size:11px; color:var(--muted); margin-bottom:8px; }
+.chainItem { display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--card); border:1px solid var(--line); border-radius:8px; margin-bottom:5px; font-size:13px; }
+.chainItem .mid { flex:1; word-break:break-all; }
+.chainItem .badge { font-size:10px; padding:1px 5px; border-radius:4px; border:1px solid var(--line); color:var(--muted); }
+.chainItem .badge.exec { color:#16a34a; border-color:#16a34a; }
+.chainItem .badge.free { color:var(--accent); border-color:var(--accent); }
+.chainItem button, .addRow button { border:1px solid var(--line); background:var(--bg); color:var(--fg); border-radius:6px; padding:2px 7px; cursor:pointer; font-size:12px; }
+.addRow { display:flex; gap:6px; margin-top:6px; }
+.addRow select, .addRow input { font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
+.keyRow { display:flex; gap:6px; align-items:center; font-size:12px; margin-bottom:6px; flex-wrap:wrap; }
+.keyRow .name { min-width:150px; }
+.keyRow input { flex:1; min-width:140px; font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
+.section h3 { margin:0 0 6px; font-size:13px; }
+.pill { font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--line); }
+.pill.ok { color:#16a34a; border-color:#16a34a; } .pill.no { color:var(--muted); }
+code.cmd { background:var(--card); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
 `;
 
 const SEAT_COLORS = ["#0891b2", "#a21caf", "#16a34a", "#ca8a04", "#2563eb"];
@@ -121,18 +140,89 @@ document.getElementById("form").addEventListener("submit", async ev => {
 });
 const panel = document.getElementById("settingsPanel");
 const cfgMsg = document.getElementById("cfgMsg");
+const sbody = document.getElementById("settingsBody");
+let S = null;
+const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props||{}); for (const k of kids) if(k!=null) e.append(k); return e; };
+const modelId = (provId, model) => { const p = S.catalog.providers.find(x=>x.id===provId); if(!p) return model; return p.kind==="login" ? (model?provId+"/"+model:provId) : p.prefix+model; };
+const isFreeId = (id) => id.startsWith("ollama/") || /:free$/i.test(id);
+const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
+
+function renderSettings() {
+  sbody.innerHTML = "";
+  for (const [seat, s] of Object.entries(S.seats)) {
+    const card = el("div", {className:"seatCard"});
+    card.append(el("h3", {textContent: seat}));
+    card.append(el("div", {className:"sub", textContent:"failover chain — first available model takes the turn"}));
+    s.chain.forEach((mid, i) => {
+      const item = el("div", {className:"chainItem"});
+      item.append(el("span", {className:"mid", textContent: mid || "(account default)"}));
+      if (isExecId(mid)) item.append(el("span", {className:"badge exec", textContent:"can build"}));
+      if (isFreeId(mid)) item.append(el("span", {className:"badge free", textContent:"free"}));
+      const up = el("button",{textContent:"↑"}); up.onclick=()=>{ if(i>0){ const c=s.chain; [c[i-1],c[i]]=[c[i],c[i-1]]; renderSettings(); } };
+      const dn = el("button",{textContent:"↓"}); dn.onclick=()=>{ const c=s.chain; if(i<c.length-1){ [c[i+1],c[i]]=[c[i],c[i+1]]; renderSettings(); } };
+      const rm = el("button",{textContent:"✕"}); rm.onclick=()=>{ s.chain.splice(i,1); renderSettings(); };
+      item.append(up, dn, rm);
+      card.append(item);
+    });
+    const provSel = el("select");
+    S.catalog.providers.forEach(p => provSel.append(el("option",{value:p.id, textContent:p.label})));
+    const modSel = el("select");
+    const fillModels = () => { modSel.innerHTML=""; const p=S.catalog.providers.find(x=>x.id===provSel.value); (p.models||[]).forEach(m=>modSel.append(el("option",{value:m, textContent: m===""?"account default":m}))); modSel.append(el("option",{value:"__c__", textContent:"other… (type id)"})); };
+    fillModels(); provSel.onchange=fillModels;
+    const addBtn = el("button",{textContent:"+ add"});
+    addBtn.onclick=()=>{ let m=modSel.value; if(m==="__c__"){ m=prompt("Model id for "+provSel.value+":")||""; if(!m) return; } s.chain.push(modelId(provSel.value,m)); renderSettings(); };
+    const addRow = el("div",{className:"addRow"}); addRow.append(provSel, modSel, addBtn);
+    card.append(addRow);
+    sbody.append(card);
+  }
+  const sec = el("div",{className:"section"});
+  sec.append(el("h3",{textContent:"Logins & API keys"}));
+  const dMap = {}; (S.doctor||[]).forEach(d=>{ if(d.ok) dMap[d.id]=true; if(d.id.indexOf("/")>0) dMap[d.id.split("/")[0]]=dMap[d.id.split("/")[0]]||d.ok; });
+  S.catalog.providers.forEach(p => {
+    const row = el("div",{className:"keyRow"});
+    row.append(el("span",{className:"name", textContent:p.label}));
+    if (p.kind==="login") {
+      const ok = dMap[p.id];
+      row.append(el("span",{className:"pill "+(ok?"ok":"no"), textContent: ok?"logged in":"log in"}));
+      if(!ok){ const c=el("span"); c.innerHTML='run <code class="cmd">'+p.loginCmd+'</code> in a terminal'; row.append(c); }
+    } else if (p.kind==="api") {
+      const set = S.providerKeys[p.keyEnv];
+      row.append(el("span",{className:"pill "+(set?"ok":"no"), textContent: set?"key saved":"no key"}));
+      const inp = el("input",{type:"password", placeholder:"paste "+p.keyEnv});
+      const save = el("button",{textContent:"save"});
+      save.onclick=async()=>{ if(!inp.value) return; const r=await (await api("/keys","POST",{env:p.keyEnv,value:inp.value})).json(); S.providerKeys[p.keyEnv]=!!r.ok; inp.value=""; renderSettings(); };
+      row.append(inp, save);
+    } else {
+      row.append(el("span",{className:"pill ok", textContent:"free · local"}));
+    }
+    sec.append(row);
+  });
+  if (!S.keychainAvailable) sec.append(el("div",{className:"sub", textContent:"No OS Keychain here — export the env var instead."}));
+  sbody.append(sec);
+  const bsec = el("div",{className:"section"});
+  bsec.append(el("h3",{textContent:"Budgets"}));
+  const brow = el("div",{className:"keyRow"});
+  const turns = el("input",{type:"number", value:S.budgets.maxTurnsPerStage??12}); turns.style.maxWidth="80px";
+  turns.onchange=()=>{ S.budgets.maxTurnsPerStage=Number(turns.value)||12; };
+  const cost = el("input",{type:"number", step:"0.5", placeholder:"none"}); cost.value=S.budgets.maxCostUsd??""; cost.style.maxWidth="90px";
+  cost.onchange=()=>{ S.budgets.maxCostUsd = cost.value===""?undefined:Number(cost.value); };
+  brow.append(el("span",{className:"name", textContent:"max turns / stage"}), turns, el("span",{className:"name", textContent:"max cost (USD)"}), cost);
+  bsec.append(brow); sbody.append(bsec);
+}
+
 document.getElementById("settings").addEventListener("click", async () => {
-  const r = await (await api("/config")).json();
-  document.getElementById("cfgText").value = r.yaml || "";
-  cfgMsg.textContent = ""; cfgMsg.className = "msg";
+  cfgMsg.textContent=""; cfgMsg.className="msg"; sbody.textContent="Loading…";
   panel.classList.add("open");
+  S = await (await api("/settings")).json();
+  renderSettings();
 });
 document.getElementById("cfgClose").addEventListener("click", () => panel.classList.remove("open"));
 document.getElementById("cfgSave").addEventListener("click", async () => {
-  const res = await api("/config", "PUT", { yaml: document.getElementById("cfgText").value });
-  const body = await res.json();
-  cfgMsg.textContent = res.ok ? (body.note || "Saved.") : (body.error || "Invalid config");
-  cfgMsg.className = "msg " + (res.ok ? "ok" : "err");
+  if(!S) return;
+  const res = await api("/settings","PUT",{ seats:S.seats, budgets:S.budgets, providers:S.providers });
+  const b = await res.json();
+  cfgMsg.textContent = res.ok ? (b.note||"Saved.") : (b.error||"Invalid");
+  cfgMsg.className = "msg "+(res.ok?"ok":"err");
 });
 document.getElementById("pause").addEventListener("click", () => api("/sessions/"+sessionId+"/pause","POST").then(refreshSeats));
 document.getElementById("resume").addEventListener("click", () => api("/sessions/"+sessionId+"/resume","POST").then(refreshSeats));
@@ -167,14 +257,10 @@ export function renderDashboard(token: string, baseUrl = ""): string {
 </header>
 <div id="settingsPanel">
   <div class="sheet">
-    <h2>Settings — models, seats &amp; budgets</h2>
-    <span class="hint">Seats and failover chains (claude, codex, ollama/&lt;model&gt;, openrouter/&lt;model&gt;…), budgets, providers. Validated on save; applies to the <b>next</b> session.</span>
-    <textarea id="cfgText" spellcheck="false"></textarea>
-    <div class="row">
-      <span class="msg" id="cfgMsg"></span>
-      <button id="cfgClose">Close</button>
-      <button id="cfgSave">Save</button>
-    </div>
+    <div class="row"><h2>Settings — models &amp; seats</h2><span style="flex:1"></span><button id="cfgClose">Close</button><button id="cfgSave">Save</button></div>
+    <span class="hint">Each seat is a <b>failover chain</b> — tried top to bottom. Free models draft, paid verify; only Claude/Codex can build. Applies to the <b>next</b> session.</span>
+    <span class="msg" id="cfgMsg"></span>
+    <div id="settingsBody">Loading…</div>
   </div>
 </div>
 <main>

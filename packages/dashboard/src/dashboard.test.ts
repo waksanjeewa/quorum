@@ -35,12 +35,13 @@ describe("renderDashboard", () => {
     expect(wv).toContain("connect-src http://127.0.0.1:5555");
   });
 
-  it("includes the settings panel wired to the config API", () => {
+  it("includes the model-manager settings panel wired to the settings/keys API", () => {
     expect(html).toContain('id="settings"'); // ⚙ button
     expect(html).toContain('id="settingsPanel"');
-    expect(html).toContain('id="cfgText"'); // editor
+    expect(html).toContain('id="settingsBody"'); // rich body
     expect(html).toContain('id="cfgSave"');
-    expect(html).toContain('"/config"'); // GET
-    expect(html).toContain('api("/config", "PUT"'); // save
+    expect(html).toContain('"/settings"'); // structured GET/PUT
+    expect(html).toContain('"/keys"'); // save API key
+    expect(html).toContain("renderSettings"); // model manager
   });
 });

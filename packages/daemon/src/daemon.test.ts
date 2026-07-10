@@ -155,6 +155,39 @@ describe("QuorumHttpServer", () => {
     await server.daemon.get(created.id)!.stop();
   });
 
+  it("serves structured settings and saves a model manager config", async () => {
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+
+    const settings = await (await api("/settings")).json();
+    expect(settings.seats).toBeTruthy();
+    expect(settings.catalog.providers.some((p: { id: string }) => p.id === "claude")).toBe(true);
+    expect(settings.doctor).toBeInstanceOf(Array);
+
+    // Save a structured config (reorder/add via the UI produces this shape)
+    const put = await api("/settings", "PUT", {
+      seats: { proposer: { chain: ["claude/claude-opus-4-8", "ollama/llama3"] }, critic: { chain: ["codex"] } },
+      budgets: { maxTurnsPerStage: 8, maxCostUsd: 3 },
+    });
+    expect(put.status).toBe(200);
+    const readBack = await (await api("/settings")).json();
+    expect(readBack.seats.proposer.chain).toEqual(["claude/claude-opus-4-8", "ollama/llama3"]);
+    expect(readBack.budgets.maxCostUsd).toBe(3);
+  });
+
+  it("rejects a keyless key save gracefully and accepts a valid one", async () => {
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+    expect((await api("/keys", "POST", { env: "", value: "x" })).status).toBe(400);
+    // valid env name accepted (may or may not persist depending on OS keychain)
+    const ok = await api("/keys", "POST", { env: "QUORUM_TEST_KEY", value: "secret" });
+    expect(ok.status).toBe(200);
+  });
+
   it("reads and validates config over the API (dashboard settings)", async () => {
     server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
     const info = await server.listen();
