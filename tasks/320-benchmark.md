@@ -1,7 +1,7 @@
 ---
 id: 320
 title: Benchmark — does the roundtable beat a single model?
-status: in_progress
+status: done
 owner: claude-opus-4-8
 deps: [050]
 owned_paths: ["bench/"]
@@ -21,3 +21,8 @@ cost tokens — document the spend. Consider free models for the contestants and
 
 ## Journal
 - (empty)
+
+## Journal
+- [claude-opus-4-8] Benchmark harness (bench/run.mjs) + real run. Design: same model (Codex) both modes — one direct call vs full brainstorm roundtable — judged BLIND by Claude (different model). First run: roundtable 2 / single 0 / ties 0 (scores 8v6, 8v8-edge). Blind slot alternated (roundtable=A then B) and judge picked it both times → not position bias. bench/REPORT.md committed.
+  - TWO harness bugs found+fixed en route (good lessons): (1) judge asked for bare JSON → Claude wrapped it in prose → unparseable; switched to line format (WINNER:/SCORE_A:/SCORE_B:/REASON:) + regex. (2) passed the TASK as the judge's `goal` → Claude ANSWERED the task instead of judging (the goal field is deliberately dominant so seated models work on it — Quorum's own design); fixed by putting the full judging instruction in the goal slot.
+  - CAVEAT: n=2 is a SIGNAL not proof. Grow GOALS in run.mjs for launch-grade numbers. Frugal-mode (free-drafts/paid-verifies) angle needs an OpenRouter key (user removed theirs) — this run tested the more fundamental "does deliberation improve the same model's output?" = yes, on this small sample.

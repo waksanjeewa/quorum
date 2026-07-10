@@ -51,12 +51,22 @@ async function roundtableAnswer(root, goal) {
 
 async function judge(goal, a, b) {
   const runner = createClaudeAdapter();
-  const r = await runner.takeTurn(ctx(goal,
-    `Two answers to a task. Score each 1-10 for quality and pick the better one. Respond with ONLY JSON: ` +
-    `{"winner":"A"|"B"|"tie","scoreA":n,"scoreB":n,"reason":"..."}\n\nTASK: ${goal}\n\nANSWER A:\n${a}\n\nANSWER B:\n${b}`), sig());
+  // Put the whole judging instruction in the `goal` slot (the model works on the goal); a task passed
+  // as the goal would get *answered* instead of judged.
+  const prompt =
+    `Compare two answers (A and B) to a task and decide which is better. Reply in EXACTLY this format, ` +
+    `nothing else:\nWINNER: <A or B or TIE>\nSCORE_A: <1-10>\nSCORE_B: <1-10>\nREASON: <one short line>\n\n` +
+    `TASK: ${goal}\n\nANSWER A:\n${a}\n\nANSWER B:\n${b}`;
+  const r = await runner.takeTurn(ctx(prompt, "You are an impartial judge. Output only the requested format."), sig());
   if (r.status !== "ok") return { winner: "tie", scoreA: 0, scoreB: 0, reason: "judge failed: " + (r.detail ?? "") };
-  const m = r.content.slice(r.content.indexOf("{"), r.content.lastIndexOf("}") + 1);
-  try { return JSON.parse(m); } catch { return { winner: "tie", scoreA: 0, scoreB: 0, reason: "unparseable: " + r.content.slice(0, 120) }; }
+  const c = r.content;
+  const w = (/WINNER:\s*(A|B|TIE)/i.exec(c)?.[1] ?? "TIE").toUpperCase();
+  return {
+    winner: w === "A" ? "A" : w === "B" ? "B" : "tie",
+    scoreA: Number(/SCORE_A:\s*(\d+)/i.exec(c)?.[1] ?? 0),
+    scoreB: Number(/SCORE_B:\s*(\d+)/i.exec(c)?.[1] ?? 0),
+    reason: (/REASON:\s*(.*)/i.exec(c)?.[1] ?? c.slice(0, 80)).trim(),
+  };
 }
 
 const root = await mkdtemp(join(tmpdir(), "quorum-bench-"));
