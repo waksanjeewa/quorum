@@ -19,12 +19,14 @@ Quorum is **local-first**: no server, no accounts, no telemetry. Your prompts an
 leave your machine. It reuses the logins you already have (Claude Code, Codex) and can fall back to
 API models or a local Ollama model so a session can run for free.
 
-> Status: **Phase 1 (the roundtable)** and the **Phase 2 core (the Workshop)** are implemented and
-> tested. Models deliberate over a shared transcript, hand off on usage limits, and you can inject
-> live — then executor agents carry out the plan by editing code in isolated git worktrees, verified
-> and merged. All four adapters (Claude, Codex, OpenRouter, Ollama) are verified against live models
-> (see [e2e/SMOKE-RESULTS.md](e2e/SMOKE-RESULTS.md)). See [DESIGN.md](DESIGN.md) for the full vision
-> and [tasks/](tasks/) for the build ledger.
+> Status: **Phases 1–3 implemented and tested.** Models deliberate over a shared transcript, hand off
+> on usage limits, and you can inject live — then executor agents carry out the plan by editing code
+> in isolated git worktrees, **verified by a reviewer and merged**, running **multiple tasks in
+> parallel**. Comes with an interactive shell, a web dashboard (with live settings), a **VS Code
+> extension**, `quorum resume`, and frugal free/paid cost policy. All four adapters (Claude, Codex,
+> OpenRouter, Ollama) are verified against live models (see
+> [e2e/SMOKE-RESULTS.md](e2e/SMOKE-RESULTS.md)). See [DESIGN.md](DESIGN.md) for the full vision and
+> [tasks/](tasks/) for the build ledger.
 
 ## How it works
 
