@@ -63,7 +63,12 @@ export class QuorumHttpServer {
 
   async close(): Promise<void> {
     await this.daemon.stopAll();
-    await new Promise<void>((resolve) => this.server.close(() => resolve()));
+    await new Promise<void>((resolve) => {
+      this.server.close(() => resolve());
+      // SSE streams hold the connection open forever, so server.close() would hang waiting for them.
+      // Force them shut so close resolves promptly (fixes "Stopping…" getting stuck).
+      this.server.closeAllConnections?.();
+    });
     await rm(join(this.projectRoot, ".quorum", "daemon.json"), { force: true });
   }
 

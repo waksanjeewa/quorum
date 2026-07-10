@@ -177,6 +177,20 @@ describe("QuorumHttpServer", () => {
     expect(readBack.yaml).toContain("ollama/llama3");
   });
 
+  it("close() resolves promptly even with an open SSE stream (no 'Stopping…' hang)", async () => {
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+    const created = await (await api("/sessions", "POST", { goal: "streamy", config: CONFIG })).json();
+    // Open an SSE stream and leave it open (this is what used to hang server.close()).
+    await fetch(`${base}/sessions/${created.id}/events?token=${token}`);
+    const t0 = Date.now();
+    await server.close();
+    server = undefined as unknown as QuorumHttpServer; // already closed
+    expect(Date.now() - t0).toBeLessThan(3000);
+  });
+
   it("serves an injected dashboard at GET / without auth", async () => {
     server = new QuorumHttpServer({
       projectRoot: root,
