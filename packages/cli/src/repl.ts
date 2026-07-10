@@ -12,6 +12,7 @@ import type { RunningSession } from "@quorum/daemon";
 
 const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
   ${C.brand("/models")}          pick your models — login or paste an API key
+  ${C.brand("/dashboard")}       open the live web dashboard (watch · inject · settings · STOP)
   ${C.brand("/doctor")}          check which model seats are ready
   ${C.brand("/agents")}          show the seats, what they're doing, and elapsed time
   ${C.brand("/status")}          one-line session status
@@ -35,6 +36,7 @@ export async function repl(projectRoot: string): Promise<void> {
   let interrupts = 0;
   let closed = false;
   let lastEventAt = 0;
+  let dashboardUrl = "";
   let heartbeat: ReturnType<typeof setInterval> | undefined;
 
   const printAbove = (text: string): void => {
@@ -42,6 +44,18 @@ export async function repl(projectRoot: string): Promise<void> {
     if (!closed) rl.prompt(true);
   };
   const info = (text: string): void => printAbove(`\x1b[2m${text}\x1b[0m`);
+
+  // Start the local web dashboard once and keep it up for the whole shell session, so its URL is
+  // stable and can be shown in the welcome. Returns the URL (empty string if it can't start).
+  const ensureServer = async (env?: Record<string, string | undefined>): Promise<string> => {
+    if (!server) {
+      const e = env ?? (await resolveSecretsEnv(knownKeyEnvs(await loadConfig(projectRoot))));
+      server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env: e });
+      const listen = await server.listen();
+      dashboardUrl = listen.url;
+    }
+    return dashboardUrl;
+  };
 
   console.log(
     "\n" +
@@ -66,6 +80,15 @@ export async function repl(projectRoot: string): Promise<void> {
     await runSetup(projectRoot, rl);
     rl.resume();
   }
+
+  // Bring the live web dashboard up now so its URL is part of the welcome (settings & models work
+  // even before you start a goal). Optional — if it can't bind, the shell still works.
+  try {
+    const url = await ensureServer();
+    if (url) console.log(`  ${C.brand("◆")} Live dashboard: ${C.cyan(url)}  ${C.dim("— watch · inject · ⚙ settings/models · STOP")}\n`);
+  } catch {
+    /* dashboard is optional at startup */
+  }
   rl.prompt();
 
   const startGoal = async (goal: string): Promise<void> => {
@@ -87,14 +110,13 @@ export async function repl(projectRoot: string): Promise<void> {
       return;
     }
 
-    if (server) await server.close();
-    info("✱ convening the roundtable — proposer · critic · arbiter…");
-    server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
-    const listen = await server.listen();
-    session = await server.daemon.createSession(goal, config);
+    if (session && running) await session.stop();
+    await ensureServer(env);
+    info(`✱ convening the roundtable — proposer · critic · arbiter…  ·  dashboard ${dashboardUrl}`);
+    session = await server!.daemon.createSession(goal, config);
     running = true;
     lastEventAt = Date.now();
-    info(`session ${session.id} started · dashboard ${listen.url}`);
+    info(`session ${session.id} started · dashboard ${dashboardUrl}`);
     session.subscribe((e) => {
       lastEventAt = Date.now();
       printAbove(formatEvent(e));
@@ -132,7 +154,20 @@ export async function repl(projectRoot: string): Promise<void> {
           rl.pause();
           await runSetup(projectRoot, rl);
           rl.resume();
+          // Restart the dashboard so freshly-added keys/models take effect (unless mid-run).
+          if (!running && server) {
+            await server.close();
+            server = undefined;
+            dashboardUrl = "";
+            const url = await ensureServer().catch(() => "");
+            if (url) info(`dashboard: ${url}`);
+          }
           return;
+        case "dashboard": {
+          const url = await ensureServer().catch(() => "");
+          info(url ? `web dashboard: ${url}  (watch live · inject a message · ⚙ settings & models · STOP)` : "couldn't start the dashboard — is the port free?");
+          return;
+        }
         case "doctor": {
           const config = await loadConfig(projectRoot);
           const report = await doctorReport(config);
