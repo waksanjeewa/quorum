@@ -136,6 +136,28 @@ describe("QuorumHttpServer", () => {
     expect(transcript).toContain("pivot to plan B");
   });
 
+  it("reads and validates config over the API (dashboard settings)", async () => {
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+
+    // GET returns the default config when none exists
+    const got = await (await api("/config")).json();
+    expect(got.yaml).toContain("seats:");
+
+    // invalid YAML is rejected with a helpful 400
+    const bad = await api("/config", "PUT", { yaml: "seats: {}" });
+    expect(bad.status).toBe(400);
+
+    // valid config round-trips
+    const yaml = "seats:\n  proposer:\n    chain: [ollama/llama3]\n  critic:\n    chain: [ollama/llama3]\n";
+    const put = await api("/config", "PUT", { yaml });
+    expect(put.status).toBe(200);
+    const readBack = await (await api("/config")).json();
+    expect(readBack.yaml).toContain("ollama/llama3");
+  });
+
   it("serves an injected dashboard at GET / without auth", async () => {
     server = new QuorumHttpServer({
       projectRoot: root,

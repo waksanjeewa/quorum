@@ -34,6 +34,8 @@ export async function repl(projectRoot: string): Promise<void> {
   let running = false;
   let interrupts = 0;
   let closed = false;
+  let lastEventAt = 0;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
 
   const printAbove = (text: string): void => {
     process.stdout.write("\r\x1b[K" + text + "\n");
@@ -86,16 +88,34 @@ export async function repl(projectRoot: string): Promise<void> {
     }
 
     if (server) await server.close();
+    info("✱ convening the roundtable — proposer · critic · arbiter…");
     server = new QuorumHttpServer({ projectRoot, renderDashboard, autonomous: true, env });
     const listen = await server.listen();
     session = await server.daemon.createSession(goal, config);
     running = true;
+    lastEventAt = Date.now();
     info(`session ${session.id} started · dashboard ${listen.url}`);
-    session.subscribe((e) => printAbove(formatEvent(e)));
+    session.subscribe((e) => {
+      lastEventAt = Date.now();
+      printAbove(formatEvent(e));
+    });
+
+    // Heartbeat: while a model is mid-turn (no events for a while), show that work is happening.
+    if (heartbeat) clearInterval(heartbeat);
+    heartbeat = setInterval(() => {
+      if (!running || !session) return;
+      if (Date.now() - lastEventAt < 7000) return; // events are flowing — stay quiet
+      const s = session.status();
+      if (s.state !== "running") return;
+      const task = s.currentTask ? ` · building task ${s.currentTask}` : "";
+      info(`⏳ still working — stage ${s.stage} · ${s.turns} turns · ${fmtElapsed(s.elapsedMs)}${task} (models think for a while; /agents for detail)`);
+    }, 8000);
+
     void session.wait().then(() => {
       running = false;
+      if (heartbeat) clearInterval(heartbeat);
       const s = session?.status();
-      printAbove(`\x1b[1m✓ done\x1b[0m \x1b[2m(${s?.stage}, ${s?.turns} turns${s?.converged ? ", converged" : ""})\x1b[0m`);
+      printAbove(`\x1b[1m✓ done\x1b[0m \x1b[2m(${s?.stage}, ${s?.turns} turns${s?.converged ? ", converged" : ""}, ${fmtElapsed(s?.elapsedMs ?? 0)})\x1b[0m`);
     });
   };
 
@@ -198,6 +218,7 @@ export async function repl(projectRoot: string): Promise<void> {
   });
 
   await new Promise<void>((resolve) => rl.on("close", () => { closed = true; resolve(); }));
+  if (heartbeat) clearInterval(heartbeat);
   if (server) await server.close();
   console.log("\nBye.");
 }

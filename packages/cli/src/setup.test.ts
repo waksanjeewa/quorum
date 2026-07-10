@@ -38,6 +38,22 @@ describe("buildConfigYaml", () => {
     expect(Object.values(cfg.seats).some((s) => s.chain.some((m) => m.startsWith("openrouter/")))).toBe(true);
   });
 
+  it("frugal mode: free models draft (proposer), paid verify (critic/arbiter)", () => {
+    const yaml = buildConfigYaml(
+      ["claude", "codex", "openrouter/deepseek/deepseek-chat:free", "ollama/llama3"],
+      { openrouter: { baseUrl: "https://openrouter.ai/api/v1", keyEnv: "OPENROUTER_API_KEY" } },
+      { frugal: true },
+    );
+    const cfg = parseSessionConfig(parseYaml(yaml));
+    // proposer drafts on free models first
+    expect(cfg.seats.proposer?.chain[0]).toMatch(/:free$|^ollama\//);
+    // critic + arbiter verify on paid models first, and differ when possible
+    expect(cfg.seats.critic?.chain[0]).toBe("claude");
+    expect(cfg.seats.arbiter?.chain[0]).toBe("codex");
+    // everyone still has the free fallback somewhere
+    expect(cfg.seats.critic?.chain).toContain("ollama/llama3");
+  });
+
   it("handles an ollama-only selection (all seats same model)", () => {
     const cfg = parseSessionConfig(parseYaml(buildConfigYaml(["ollama/llama3", "ollama/llama3"])));
     expect(cfg.seats.proposer?.chain).toEqual(["ollama/llama3"]);

@@ -1,8 +1,19 @@
 # Quorum
 
+[![CI](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **Your AI session never dies.** Multiple AI models collaborate on one goal — brainstorming,
 planning, and building together — handing off to each other when usage limits hit, with you able to
 step in at any moment without stopping the work.
+
+```mermaid
+flowchart LR
+    G([your goal]) --> R[🗣 roundtable<br/>proposer · critic · arbiter<br/>debate & converge]
+    R --> W[🔨 workshop<br/>Claude/Codex builds it in an<br/>isolated git worktree]
+    W --> M([✅ verified code,<br/>merged])
+    F[[free models draft<br/>paid models verify<br/>limits? next model picks up]] -.-> R & W
+```
 
 Quorum is **local-first**: no server, no accounts, no telemetry. Your prompts and credentials never
 leave your machine. It reuses the logins you already have (Claude Code, Codex) and can fall back to
@@ -105,6 +116,19 @@ A TypeScript / pnpm monorepo (`core ← adapters ← daemon ← cli`; the dashbo
 
 Run the tests with `corepack pnpm test`. For a manual check against real models, see
 [e2e/SMOKE.md](e2e/SMOKE.md).
+
+## Documentation
+
+- **[Getting started](docs/getting-started.md)** — prerequisites, install, first goal
+- **[Configuration](docs/configuration.md)** — model ids (incl. `claude/<model>`, OpenRouter free
+  models, Hermes, gateways), frugal mode, budgets
+- **[Architecture](docs/architecture.md)** — how the roundtable, failover, and workshop work (with diagrams)
+
+## Cost policy: frugal by default
+
+Mix free and paid models and Quorum offers **frugal mode**: free models (Ollama, OpenRouter `:free`)
+do the bulk drafting; your paid models are spent only on verifying and improving; Claude/Codex do
+the building. Hard caps (`max_cost_usd`, `wall_clock_max`) back it up.
 
 ## License
 

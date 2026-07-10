@@ -11,22 +11,47 @@ export interface ProviderEntry {
   keyEnv: string;
 }
 
+/** Free-to-run model ids: local Ollama or an explicit :free catalog model. */
+export function isFreeModel(id: string): boolean {
+  return id.startsWith("ollama/") || /:free$/i.test(id);
+}
+
 /**
  * Build a .quorum/config.yaml string from selected model ids + named providers. Pure/testable.
- * Distributes distinct "primary" models across proposer/critic/arbiter and appends a local Ollama
- * model (if selected) as a shared fallback in every chain.
+ *
+ * Default: distributes distinct "primary" models across proposer/critic/arbiter with a local
+ * Ollama model (if selected) as a shared fallback.
+ *
+ * Frugal (opts.frugal, needs ≥1 free and ≥1 paid model): free models do the bulk drafting
+ * (proposer chain is free-first), paid models verify and improve (critic/arbiter are paid-first),
+ * so paid quota is spent on judgement, not volume. Executors are always Claude/Codex regardless.
  */
-export function buildConfigYaml(models: string[], providers: Record<string, ProviderEntry> = {}): string {
-  const fallback = models.find((m) => m.startsWith("ollama/"));
-  const primaries = models.filter((m) => !m.startsWith("ollama/"));
+export function buildConfigYaml(
+  models: string[],
+  providers: Record<string, ProviderEntry> = {},
+  opts: { frugal?: boolean } = {},
+): string {
   const uniq = (xs: (string | undefined)[]): string[] => [...new Set(xs.filter((x): x is string => Boolean(x)))];
-  const pick = (i: number): string | undefined => primaries[i % Math.max(primaries.length, 1)] ?? fallback ?? models[0];
+  const frees = models.filter(isFreeModel);
+  const paids = models.filter((m) => !isFreeModel(m));
 
-  const seats: Record<string, string[]> = {
-    proposer: uniq([pick(0), fallback]),
-    critic: uniq([pick(1), fallback]),
-    arbiter: uniq([pick(2), fallback]),
-  };
+  let seats: Record<string, string[]>;
+  if (opts.frugal && frees.length > 0 && paids.length > 0) {
+    seats = {
+      proposer: uniq([...frees, ...paids]), // free-first: drafting volume costs nothing
+      critic: uniq([...paids, ...frees]), // paid-first: verification quality
+      arbiter: uniq([...[...paids].reverse(), ...frees]), // a different paid model when available
+    };
+  } else {
+    const fallback = models.find((m) => m.startsWith("ollama/"));
+    const primaries = models.filter((m) => !m.startsWith("ollama/"));
+    const pick = (i: number): string | undefined => primaries[i % Math.max(primaries.length, 1)] ?? fallback ?? models[0];
+    seats = {
+      proposer: uniq([pick(0), fallback]),
+      critic: uniq([pick(1), fallback]),
+      arbiter: uniq([pick(2), fallback]),
+    };
+  }
 
   const lines: string[] = ["seats:"];
   for (const [name, chain] of Object.entries(seats)) {
@@ -169,7 +194,15 @@ export async function runSetup(
     return;
   }
 
-  const yaml = buildConfigYaml(models, providers);
+  // Cost policy: when the table mixes free and paid models, default to frugal — free models draft,
+  // paid models verify and improve.
+  let frugal = false;
+  if (models.some(isFreeModel) && models.some((m) => !isFreeModel(m))) {
+    const ans = await ask(rl, `  Frugal mode — draft with FREE models, use paid only to verify & improve? [Y/n] : `);
+    frugal = !/^n/i.test(ans);
+  }
+
+  const yaml = buildConfigYaml(models, providers, { frugal });
   await mkdir(join(projectRoot, ".quorum"), { recursive: true });
   await writeFile(join(projectRoot, ".quorum", "config.yaml"), yaml, "utf8");
   const canBuild = models.some((m) => /^(claude|codex)(\/|$)/.test(m));

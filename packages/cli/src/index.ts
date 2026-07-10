@@ -125,8 +125,20 @@ async function init(projectRoot: string): Promise<void> {
 }
 
 async function doctor(projectRoot: string): Promise<void> {
+  // Prerequisites first — what Quorum itself needs on this machine.
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const run = promisify(execFile);
+  console.log("Prerequisites:");
+  const nodeMajor = Number(process.versions.node.split(".")[0]);
+  console.log(`  ${nodeMajor >= 20 ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"} node ${process.versions.node}${nodeMajor >= 20 ? "" : "  (need ≥20 — https://nodejs.org)"}`);
+  const gitOk = await run("git", ["--version"]).then((r) => r.stdout.trim()).catch(() => null);
+  console.log(`  ${gitOk ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"} ${gitOk ?? "git not found — required for building (xcode-select --install or brew install git)"}`);
+  const inRepo = await run("git", ["rev-parse", "--is-inside-work-tree"], { cwd: projectRoot }).then(() => true).catch(() => false);
+  console.log(`  ${inRepo ? "\x1b[32m✓\x1b[0m" : "\x1b[33m•\x1b[0m"} ${inRepo ? "this folder is a git repo (can build)" : "not a git repo — Quorum can plan here, run `git init` to let it build"}`);
+
   const config = await loadConfig(projectRoot);
-  console.log("Checking configured models…\n");
+  console.log("\nChecking configured models…\n");
   const checks = await doctorReport(config);
   const ok = new Map(checks.map((c) => [c.id, c.ok]));
   for (const c of checks) {

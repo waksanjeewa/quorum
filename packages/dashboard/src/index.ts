@@ -33,6 +33,14 @@ aside { border-right:1px solid var(--line); padding:12px; overflow:auto; }
 form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); position:sticky; bottom:0; background:var(--bg); grid-column:1 / -1; }
 input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
 .hint { font-size:11px; color:var(--muted); }
+#settingsPanel { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; }
+#settingsPanel.open { display:flex; align-items:center; justify-content:center; }
+.sheet { background:var(--bg); border:1px solid var(--line); border-radius:14px; width:min(680px,92vw); max-height:86vh; display:flex; flex-direction:column; padding:16px; gap:10px; }
+.sheet h2 { margin:0; font-size:15px; }
+.sheet textarea { flex:1; min-height:320px; font:12px/1.5 ui-monospace,monospace; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:10px; resize:vertical; }
+.sheet .row { display:flex; gap:8px; align-items:center; }
+.sheet .msg { font-size:12px; flex:1; }
+.sheet .msg.err { color:var(--stop); } .sheet .msg.ok { color:#16a34a; }
 `;
 
 const SEAT_COLORS = ["#0891b2", "#a21caf", "#16a34a", "#ca8a04", "#2563eb"];
@@ -97,6 +105,21 @@ document.getElementById("form").addEventListener("submit", async ev => {
   if (text.startsWith("/")) await api("/sessions/"+sessionId+"/command", "POST", { command: text });
   else await api("/sessions/"+sessionId+"/inject", "POST", { content: text });
 });
+const panel = document.getElementById("settingsPanel");
+const cfgMsg = document.getElementById("cfgMsg");
+document.getElementById("settings").addEventListener("click", async () => {
+  const r = await (await api("/config")).json();
+  document.getElementById("cfgText").value = r.yaml || "";
+  cfgMsg.textContent = ""; cfgMsg.className = "msg";
+  panel.classList.add("open");
+});
+document.getElementById("cfgClose").addEventListener("click", () => panel.classList.remove("open"));
+document.getElementById("cfgSave").addEventListener("click", async () => {
+  const res = await api("/config", "PUT", { yaml: document.getElementById("cfgText").value });
+  const body = await res.json();
+  cfgMsg.textContent = res.ok ? (body.note || "Saved.") : (body.error || "Invalid config");
+  cfgMsg.className = "msg " + (res.ok ? "ok" : "err");
+});
 document.getElementById("pause").addEventListener("click", () => api("/sessions/"+sessionId+"/pause","POST").then(refreshSeats));
 document.getElementById("resume").addEventListener("click", () => api("/sessions/"+sessionId+"/resume","POST").then(refreshSeats));
 document.getElementById("stop").addEventListener("click", () => api("/sessions/"+sessionId+"/stop","POST").then(refreshSeats));
@@ -115,10 +138,23 @@ export function renderDashboard(token: string): string {
   <span class="stage" id="stage">…</span>
   <span class="hint">session <span id="sid">—</span></span>
   <span class="spacer"></span>
+  <button id="settings">⚙ Settings</button>
   <button id="pause">Pause</button>
   <button id="resume">Resume</button>
   <button class="stop" id="stop">◼ STOP</button>
 </header>
+<div id="settingsPanel">
+  <div class="sheet">
+    <h2>Settings — models, seats &amp; budgets</h2>
+    <span class="hint">Seats and failover chains (claude, codex, ollama/&lt;model&gt;, openrouter/&lt;model&gt;…), budgets, providers. Validated on save; applies to the <b>next</b> session.</span>
+    <textarea id="cfgText" spellcheck="false"></textarea>
+    <div class="row">
+      <span class="msg" id="cfgMsg"></span>
+      <button id="cfgClose">Close</button>
+      <button id="cfgSave">Save</button>
+    </div>
+  </div>
+</div>
 <main>
   <aside id="seats"></aside>
   <div id="feed"></div>

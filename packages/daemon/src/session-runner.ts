@@ -127,7 +127,10 @@ export class RunningSession {
 
     if (this.autonomous && rt.converged && !this.abort.signal.aborted && (await this.isGitRepo())) {
       this.state = "running";
-      const planner = this.firstSeatRunner;
+      // Plan decomposition needs strong judgement: prefer a seat currently held by an
+      // executor-capable model (Claude/Codex) over e.g. a free drafting model.
+      const plannerSeat = Object.entries(this.currentModel).find(([, m]) => /^(claude|codex)(\/|$)/.test(m))?.[0];
+      const planner = (plannerSeat ? gated[plannerSeat] : undefined) ?? this.firstSeatRunner;
       if (planner) {
         await decomposePlan({ session: this.session, planner, now: this.now, signal: this.abort.signal, onEvent: (e) => this.onEngineEvent(e) });
       }

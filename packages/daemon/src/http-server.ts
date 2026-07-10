@@ -1,10 +1,11 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile, rm } from "node:fs/promises";
+import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { parse as parseYaml } from "yaml";
 import { parseSessionConfig, type SessionConfig, type TranscriptEvent } from "@quorum/core";
 import { Daemon, type DaemonOpts } from "./daemon.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
 import type { RunningSession } from "./session-runner.js";
 
 export interface HttpServerOpts extends DaemonOpts {
@@ -87,6 +88,27 @@ export class QuorumHttpServer {
     if (!this.authOk(req, url)) return json(res, 401, { error: "unauthorized" });
 
     try {
+      // /config — read/update .quorum/config.yaml from the dashboard (applies to the NEXT session).
+      if (parts[0] === "config") {
+        const path = join(this.projectRoot, ".quorum", "config.yaml");
+        if (req.method === "GET") {
+          const yaml = await readFile(path, "utf8").catch(() => DEFAULT_CONFIG_YAML);
+          return json(res, 200, { yaml });
+        }
+        if (req.method === "PUT" || req.method === "POST") {
+          const body = await readJson(req);
+          const yaml = String(body.yaml ?? "");
+          try {
+            parseSessionConfig(parseYaml(yaml)); // validate before writing
+          } catch (err) {
+            return json(res, 400, { error: `Invalid config: ${err instanceof Error ? err.message : String(err)}` });
+          }
+          await mkdir(join(this.projectRoot, ".quorum"), { recursive: true });
+          await writeFile(path, yaml.endsWith("\n") ? yaml : yaml + "\n", "utf8");
+          return json(res, 200, { ok: true, note: "Saved — applies to the next session." });
+        }
+      }
+
       // /sessions ...
       if (parts[0] === "sessions") {
         if (parts.length === 1 && req.method === "GET") {
