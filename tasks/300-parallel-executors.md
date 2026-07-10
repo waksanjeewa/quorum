@@ -1,8 +1,8 @@
 ---
 id: 300
 title: Phase 3 — parallel executors on disjoint tasks
-status: todo
-owner: null
+status: done
+owner: claude-opus-4-8
 deps: [230, 250]
 owned_paths: ["packages/core/src/roundtable/execute.ts", "packages/daemon/src/"]
 acceptance:
@@ -20,3 +20,6 @@ per task so /agents and the dashboard show multiple in-flight tasks.
 
 ## Journal
 - (empty)
+
+## Journal
+- [claude-opus-4-8] Refactored runExecuteStage into a concurrency scheduler (166 tests, 3 new). Per-task logic extracted to processTask(); scheduler starts eligible tasks up to maxConcurrency (default min(4,cores-1)), respecting: deps (all done), owned_paths LEASES (pathsOverlap — empty scope = overlaps all, conservative), and serialized merges (Mutex around mergeWorktree so only one touches the base branch). Per-task failover/review/STOP preserved. Verified: 3 disjoint tasks run at once (tracker.max=3), overlapping-path tasks serialize (max=1), merges never collide. Aborted-mid-task → blocked (worktree persists, resumable). Daemon uses the default cap; runExecuteStage takes maxConcurrency for tests/tuning.

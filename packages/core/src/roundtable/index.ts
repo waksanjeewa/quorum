@@ -11,6 +11,7 @@ export {
 } from "./engine.js";
 export {
   runExecuteStage,
+  pathsOverlap,
   type RunExecuteOpts,
   type ExecuteResult,
   type ExecutorFactory,

@@ -6,7 +6,23 @@ import { parseSessionConfig } from "../types/index.js";
 import { createSession, readEvents, readTasks, sessionFiles, writeTask } from "../ledger/index.js";
 import { git } from "../workspace/git.js";
 import type { SeatRunner } from "./engine.js";
-import { runExecuteStage } from "./execute.js";
+import { pathsOverlap, runExecuteStage } from "./execute.js";
+
+describe("pathsOverlap", () => {
+  it("detects overlap by equality and prefix", () => {
+    expect(pathsOverlap(["src/"], ["src/lib"])).toBe(true);
+    expect(pathsOverlap(["a.txt"], ["a.txt"])).toBe(true);
+    expect(pathsOverlap(["src"], ["src/x"])).toBe(true);
+  });
+  it("treats disjoint paths as non-overlapping", () => {
+    expect(pathsOverlap(["a.txt"], ["b.txt"])).toBe(false);
+    expect(pathsOverlap(["src/api"], ["src/ui"])).toBe(false);
+  });
+  it("treats an empty (unknown) scope as overlapping everything", () => {
+    expect(pathsOverlap([], ["anything"])).toBe(true);
+    expect(pathsOverlap(["x"], [])).toBe(true);
+  });
+});
 
 const CONFIG = parseSessionConfig({
   seats: { proposer: { chain: ["x"] }, critic: { chain: ["x"] } },
@@ -35,11 +51,36 @@ const fileWriterAt = (worktree: string, name: string, content: string): SeatRunn
   },
 });
 
-async function writeRuntimeTask(dir: string, id: string, acceptance: string[]): Promise<void> {
+async function writeRuntimeTask(dir: string, id: string, acceptance: string[], ownedPaths: string[] = []): Promise<void> {
   await writeTask(join(sessionFiles.tasksDir(dir), `${id}.md`), {
-    frontmatter: { id, title: `Task ${id}`, status: "todo", owned_paths: [], acceptance },
+    frontmatter: { id, title: `Task ${id}`, status: "todo", owned_paths: ownedPaths, acceptance },
     body: "## Journal\n- (empty)\n",
   });
+}
+
+/** Map a worktree path (.quorum/worktrees/<taskId>) to the file that task should create. */
+function fileFor(wt: string, files: Record<string, string>): string {
+  const id = wt.split("/").filter(Boolean).pop() ?? "";
+  return files[id] ?? "out.txt";
+}
+
+/** Tracks how many executors run at once. */
+function tracker(): { max: number; exec: (wt: string, name: string) => SeatRunner } {
+  const t = { active: 0, max: 0 };
+  return {
+    get max() { return t.max; },
+    exec: (wt: string, name: string): SeatRunner => ({
+      id: "exec",
+      async takeTurn() {
+        t.active++;
+        t.max = Math.max(t.max, t.active);
+        await new Promise((r) => setTimeout(r, 60));
+        await writeFile(join(wt, name), "built\n", "utf8");
+        t.active--;
+        return { status: "ok", content: "wrote " + name };
+      },
+    }),
+  };
 }
 
 describe("runExecuteStage", () => {
@@ -93,6 +134,44 @@ describe("runExecuteStage", () => {
     expect(result.blocked).toEqual(["020"]);
     const tasks = await readTasks(session.dir);
     expect(tasks[0]?.frontmatter.status).toBe("blocked");
+  });
+
+  it("runs disjoint tasks concurrently (Phase 3)", async () => {
+    const session = await createSession(repo, "parallel build", CONFIG);
+    await writeRuntimeTask(session.dir, "001", ["$ test -f a.txt"], ["a.txt"]);
+    await writeRuntimeTask(session.dir, "002", ["$ test -f b.txt"], ["b.txt"]);
+    await writeRuntimeTask(session.dir, "003", ["$ test -f c.txt"], ["c.txt"]);
+    const files: Record<string, string> = { "001": "a.txt", "002": "b.txt", "003": "c.txt" };
+    const t = tracker();
+
+    const result = await runExecuteStage({
+      session,
+      projectRoot: repo,
+      maxConcurrency: 3,
+      makeExecutor: (wt, attempt) => (attempt === 0 ? t.exec(wt, fileFor(wt, files)) : null),
+    });
+
+    expect(result.completed.sort()).toEqual(["001", "002", "003"]);
+    expect(t.max).toBe(3); // all three ran at the same time
+    expect(await readFile(join(repo, "a.txt"), "utf8")).toContain("built");
+  });
+
+  it("serializes tasks whose owned_paths overlap (Phase 3 lease)", async () => {
+    const session = await createSession(repo, "leased build", CONFIG);
+    await writeRuntimeTask(session.dir, "001", ["$ test -f one.txt"], ["src/"]);
+    await writeRuntimeTask(session.dir, "002", ["$ test -f two.txt"], ["src/lib"]); // overlaps src/
+    const files: Record<string, string> = { "001": "one.txt", "002": "two.txt" };
+    const t = tracker();
+
+    const result = await runExecuteStage({
+      session,
+      projectRoot: repo,
+      maxConcurrency: 4,
+      makeExecutor: (wt, attempt) => (attempt === 0 ? t.exec(wt, fileFor(wt, files)) : null),
+    });
+
+    expect(result.completed.sort()).toEqual(["001", "002"]);
+    expect(t.max).toBe(1); // never ran together — the lease held
   });
 
   it("blocks when the review rejects an otherwise-passing task", async () => {

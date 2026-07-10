@@ -1,3 +1,4 @@
+import { cpus } from "node:os";
 import { runAcceptance, extractCommands } from "../acceptance/index.js";
 import {
   appendEvent,
@@ -10,6 +11,28 @@ import { createWorktree, mergeWorktree, removeWorktree } from "../workspace/inde
 import { git } from "../workspace/git.js";
 import type { SessionConfig, TranscriptEvent, TurnContext, TurnResult } from "../types/index.js";
 import type { SeatRunner } from "./engine.js";
+
+/** Serialize an async critical section (used so only one merge touches the base branch at a time). */
+class Mutex {
+  private tail = Promise.resolve();
+  run<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this.tail.then(fn);
+    this.tail = result.then(() => undefined, () => undefined);
+    return result;
+  }
+}
+
+/** Do two owned_paths sets overlap? Empty set = unknown scope → conservatively overlaps everything. */
+export function pathsOverlap(a: string[], b: string[]): boolean {
+  if (a.length === 0 || b.length === 0) return true;
+  const norm = (p: string): string => p.replace(/\/+$/, "");
+  for (const x of a.map(norm)) {
+    for (const y of b.map(norm)) {
+      if (x === y || x.startsWith(y + "/") || y.startsWith(x + "/")) return true;
+    }
+  }
+  return false;
+}
 
 /** Produce an execute-mode runner bound to a task's worktree. `attempt` walks the seat chain on
  * failover (0 = first executor model, higher = next); return null when the chain is exhausted. */
@@ -35,6 +58,8 @@ export interface RunExecuteOpts {
   signal?: AbortSignal;
   /** Executor re-tries per task when acceptance fails. Default 2. */
   maxIterationsPerTask?: number;
+  /** Max tasks executing at once (Phase 3). Default min(4, cores-1). */
+  maxConcurrency?: number;
 }
 
 export interface ExecuteResult {
@@ -72,83 +97,104 @@ export async function runExecuteStage(opts: RunExecuteOpts): Promise<ExecuteResu
   const ts = (): string => now().toISOString();
   const taskPath = (id: string): string => `${sessionFiles.tasksDir(dir)}/${id}.md`;
 
+  const maxConcurrency = opts.maxConcurrency ?? Math.max(1, Math.min(4, cpus().length - 1));
+  const mergeLock = new Mutex();
   const tasks = await readTasks(dir);
   const done = new Set(tasks.filter((t) => t.frontmatter.status === "done").map((t) => t.frontmatter.id));
+  const blockedSet = new Set<string>();
 
-  for (const task of tasks) {
-    if (signal.aborted) break;
+  /** Isolate → execute → verify → review → resolve for ONE task. Returns its outcome. */
+  const processTask = async (task: TaskFile): Promise<"completed" | "blocked"> => {
     const id = task.frontmatter.id;
-    if (task.frontmatter.status === "done" || task.frontmatter.status === "blocked") continue;
-    if (!depsSatisfied(task, done)) continue;
-
     await safeUpdateStatus(id, "in_progress");
     const worktree = await createWorktree(projectRoot, id);
 
     let attempt = 0;
     let runner = opts.makeExecutor(worktree.path, attempt);
-    if (!runner) {
-      await markBlocked(id, "no executor available");
-      continue;
-    }
+    if (!runner) return emitBlocked(id, "no executor available");
     await emit({ ts: ts(), type: "task_start", task: id, seat: "executor", model: runner.id, worktree: worktree.path });
 
-    let resolved = false;
-    for (let iter = 1; iter <= maxIter && !resolved; iter++) {
-      if (signal.aborted) break;
+    for (let iter = 1; iter <= maxIter; iter++) {
+      if (signal.aborted) return "blocked";
 
-      // EXECUTE — one executor turn in the worktree, walking the chain on usage_limit.
       let result: TurnResult;
       try {
         result = await runner!.takeTurn(buildExecuteContext(task, worktree.path, iter), signal);
       } catch (err) {
-        if (isAbort(err)) break;
+        if (isAbort(err)) return "blocked";
         result = { status: "error", detail: String(err), retryable: false };
       }
       if (result.status === "usage_limit" || (result.status === "error" && !result.retryable)) {
         const next = opts.makeExecutor(worktree.path, ++attempt);
-        if (!next) {
-          await markBlocked(id, `executor exhausted: ${"detail" in result ? result.detail : ""}`);
-          resolved = true;
-          break;
-        }
+        if (!next) return emitBlocked(id, `executor exhausted: ${"detail" in result ? result.detail : ""}`);
         await emit({ ts: ts(), type: "seat_change", seat: "executor", from: runner!.id, to: next.id, reason: result.status === "usage_limit" ? "usage_limit" : "error" });
         runner = next;
-        iter--; // retry same iteration on the new model, same worktree
+        iter--;
         continue;
       }
 
-      // VERIFY — objective acceptance gate.
       const commands = extractCommands(task.frontmatter.acceptance);
       const acc = await runAcceptance(worktree.path, commands, signal);
       await emit({ ts: ts(), type: "task_result", task: id, passed: acc.passed, ...(acc.passed ? {} : { detail: firstFailure(acc.results) }) });
-      if (!acc.passed && iter < maxIter) continue; // let the executor try again
+      if (!acc.passed && iter < maxIter) continue;
 
-      // REVIEW — subjective gate over the diff.
       const diff = (await git(worktree.path, ["diff", "HEAD"])).stdout;
       const review = opts.review
         ? await opts.review({ taskId: id, title: task.frontmatter.title, diff, acceptancePassed: acc.passed })
         : { approved: acc.passed };
 
       if (acc.passed && review.approved) {
-        const merge = await mergeWorktree(projectRoot, id);
+        // Merges are serialized — only one touches the base branch at a time.
+        const merge = await mergeLock.run(() => mergeWorktree(projectRoot, id));
         if ("merged" in merge) {
           await emit({ ts: ts(), type: "merge", task: id, result: "merged" });
           await safeUpdateStatus(id, "done");
           await removeWorktree(projectRoot, id);
+          return "completed";
+        }
+        await emit({ ts: ts(), type: "merge", task: id, result: "conflict", detail: merge.files.join(", ") });
+        await safeUpdateStatus(id, "blocked");
+        return "blocked";
+      }
+      if (iter >= maxIter) return emitBlocked(id, review.reason ?? "acceptance failed");
+    }
+    return "blocked";
+  };
+
+  // ---- scheduler: run eligible tasks concurrently (deps + owned_paths leases + cap) ----
+  const running = new Map<string, { paths: string[]; p: Promise<void> }>();
+  const handled = (id: string): boolean => done.has(id) || blockedSet.has(id) || running.has(id);
+  const eligible = (task: TaskFile): boolean => {
+    const id = task.frontmatter.id;
+    if (task.frontmatter.status === "done" || task.frontmatter.status === "blocked") return false;
+    if (handled(id) || !depsSatisfied(task, done)) return false;
+    const paths = task.frontmatter.owned_paths ?? [];
+    for (const r of running.values()) if (pathsOverlap(paths, r.paths)) return false;
+    return true;
+  };
+
+  while (!signal.aborted) {
+    for (const task of tasks) {
+      if (running.size >= maxConcurrency) break;
+      if (!eligible(task)) continue;
+      const id = task.frontmatter.id;
+      const paths = task.frontmatter.owned_paths ?? [];
+      const p = processTask(task).then((outcome) => {
+        if (outcome === "completed") {
           done.add(id);
           completed.push(id);
         } else {
-          await emit({ ts: ts(), type: "merge", task: id, result: "conflict", detail: merge.files.join(", ") });
-          await safeUpdateStatus(id, "blocked");
+          blockedSet.add(id);
           blocked.push(id);
         }
-        resolved = true;
-      } else if (iter >= maxIter) {
-        await markBlocked(id, review.reason ?? "acceptance failed");
-        resolved = true;
-      }
+        running.delete(id);
+      });
+      running.set(id, { paths, p });
     }
+    if (running.size === 0) break; // nothing running and nothing startable
+    await Promise.race([...running.values()].map((r) => r.p));
   }
+  await Promise.allSettled([...running.values()].map((r) => r.p));
 
   return { completed, blocked };
 
@@ -159,10 +205,10 @@ export async function runExecuteStage(opts: RunExecuteOpts): Promise<ExecuteResu
       /* task file naming may differ; status is also reflected in transcript events */
     }
   }
-  async function markBlocked(id: string, detail: string): Promise<void> {
+  async function emitBlocked(id: string, detail: string): Promise<"blocked"> {
     await emit({ ts: ts(), type: "merge", task: id, result: "blocked", detail });
     await safeUpdateStatus(id, "blocked");
-    blocked.push(id);
+    return "blocked";
   }
 }
 
