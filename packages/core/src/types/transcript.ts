@@ -52,6 +52,13 @@ export const TranscriptEventSchema = z.discriminatedUnion("type", [
     by: z.enum(["human", "system"]),
     detail: z.string().optional(),
   }),
+  // A seat has started a turn (emitted before the model responds) — powers live "thinking" UI.
+  z.object({
+    ts: IsoTimestamp,
+    type: z.literal("thinking"),
+    seat: SeatIdSchema,
+    model: z.string(),
+  }),
   // ---- Phase 2 (the Workshop) execution events ----
   z.object({
     ts: IsoTimestamp,

@@ -44,6 +44,8 @@ export interface RunRoundtableOpts {
   now?: () => Date;
   /** Live event hook (the daemon streams these to the dashboard). */
   onEvent?: (e: TranscriptEvent) => void;
+  /** Called when a seat begins a turn (before the model responds) — powers live "thinking" UI. */
+  onThinking?: (seat: SeatId, model: string) => void;
   /** Non-transcript notes, e.g. rejected early approvals (observable for tests/logs). */
   onNote?: (note: string) => void;
   /** Kill switch. */
@@ -132,6 +134,7 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
         addressedHumanCount: addressedHumans,
       });
       const ctx: TurnContext = { ...base, roleInstructions: instr(role, base) };
+      opts.onThinking?.(seatId, runner.id);
 
       let result: TurnResult;
       try {

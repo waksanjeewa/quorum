@@ -26,6 +26,8 @@ export function formatEvent(e: TranscriptEvent, color = true): string {
       return c("\x1b[1m", `── stage → ${e.to} ──`);
     case "control":
       return c(DIM, `• ${e.action}${e.detail ? `: ${e.detail}` : ""} (${e.by})`);
+    case "thinking":
+      return c(DIM, `◌ ${e.seat} (${e.model}) is thinking…`);
     default:
       return "";
   }

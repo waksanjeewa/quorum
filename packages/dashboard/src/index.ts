@@ -29,6 +29,8 @@ aside { border-right:1px solid var(--line); padding:12px; overflow:auto; }
 .ev.human .who { color:var(--accent); }
 .ev.control, .ev.seat_change { color:var(--muted); font-size:12px; }
 .ev.stage { font-weight:700; text-align:center; color:var(--muted); border-top:1px solid var(--line); padding-top:8px; }
+.ev.thinking { color:var(--muted); font-style:italic; opacity:.85; }
+.ev.thinking::before { content:"⋯ "; }
 .move { font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:4px; padding:0 5px; margin-left:6px; }
 form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); position:sticky; bottom:0; background:var(--bg); grid-column:1 / -1; }
 input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
@@ -56,7 +58,18 @@ const stageEl = document.getElementById("stage");
 const seatColor = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return ${JSON.stringify(SEAT_COLORS)}[h % ${SEAT_COLORS.length}]; };
 let sessionId = null;
 
+function setThinking(text) {
+  let el = document.getElementById("thinking");
+  if (!el) { el = document.createElement("div"); el.id = "thinking"; el.className = "ev thinking"; }
+  el.textContent = text;
+  feed.appendChild(el); // keep it at the bottom
+  feed.scrollTop = feed.scrollHeight;
+}
+function clearThinking() { const el = document.getElementById("thinking"); if (el) el.remove(); }
+
 function addEvent(e) {
+  if (e.type === "thinking") { setThinking("◌ " + e.seat + " (" + e.model + ") is thinking…"); return; }
+  clearThinking();
   const div = document.createElement("div");
   div.className = "ev " + e.type;
   if (e.type === "turn") {

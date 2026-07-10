@@ -26,6 +26,7 @@ describe("TranscriptEvent", () => {
       { ts: TS, type: "seat_change", seat: "critic", from: "codex", to: "gemini", reason: "usage_limit" },
       { ts: TS, type: "stage", from: "brainstorm", to: "plan", by: "models" },
       { ts: TS, type: "control", action: "stop", by: "human" },
+      { ts: TS, type: "thinking", seat: "proposer", model: "claude" },
     ];
     for (const e of events) expect(TranscriptEventSchema.safeParse(e).success).toBe(true);
   });

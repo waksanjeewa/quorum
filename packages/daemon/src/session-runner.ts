@@ -122,6 +122,7 @@ export class RunningSession {
         return next ? gatedRunner(next, this.gate) : null;
       },
       onEvent: (e) => this.onEngineEvent(e),
+      onThinking: (seat, model) => this.streamOnly({ ts: this.now().toISOString(), type: "thinking", seat, model }),
     });
     this.result = rt;
 
@@ -170,6 +171,11 @@ export class RunningSession {
     const index = this.log.length;
     this.log.push(e);
     for (const fn of this.subscribers) fn(e, index);
+  }
+
+  /** Fan out an ephemeral event to live subscribers WITHOUT recording it (e.g. "thinking"). */
+  private streamOnly(e: TranscriptEvent): void {
+    for (const fn of this.subscribers) fn(e, this.log.length);
   }
 
   /** Append a daemon-originated event to disk + stream it. */
