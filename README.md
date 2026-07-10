@@ -5,7 +5,7 @@
 
 **🌐 Site:** [waksanjeewa.github.io/quorum](https://waksanjeewa.github.io/quorum) &middot; **Docs:** [Getting started](docs/getting-started.md)
 
-**Your AI session never dies.** Multiple AI models collaborate on one goal — brainstorming,
+**Many models, working together — the session will never die.** Multiple AI models collaborate on one goal — brainstorming,
 planning, and building together — handing off to each other when usage limits hit, with you able to
 step in at any moment without stopping the work.
 

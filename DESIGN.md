@@ -1,6 +1,6 @@
 # Quorum — v1 Architecture & Design
 
-> **One-liner:** Your AI session never dies. Multiple AI models collaborate on one goal — brainstorming, planning, and building together — handing off to each other when usage limits hit, with you able to step in at any moment without stopping the work.
+> **One-liner:** Many models working together — the session will never die. Multiple AI models collaborate on one goal — brainstorming, planning, and building together — handing off to each other when usage limits hit, with you able to step in at any moment without stopping the work.
 
 *Status: draft for discussion — nothing here is final.*
 

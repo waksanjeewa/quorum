@@ -60,8 +60,8 @@ export async function repl(projectRoot: string): Promise<void> {
   console.log(
     "\n" +
       banner([
-        `${C.brand("◆")} ${C.bold("Quorum")} ${C.dim("— multiple AI models plan and build together")}`,
-        `${C.dim("your session never dies · you're always at the table")}`,
+        `${C.brand("◆")} ${C.bold("Quorum")} ${C.dim("— many models, working together")}`,
+        `${C.dim("the session never dies · you're always at the table")}`,
       ]) +
       "\n",
   );
