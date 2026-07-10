@@ -16,8 +16,8 @@ describe("keychain", () => {
     expect(await getSecret(account)).toBeUndefined();
   });
 
-  it("reports availability by platform", () => {
-    expect(keychainAvailable()).toBe(onMac);
+  it("reports availability on macOS and Linux", () => {
+    expect(keychainAvailable()).toBe(platform() === "darwin" || platform() === "linux");
   });
 
   it("resolveSecretsEnv lets a real env var win over stored secrets", async () => {

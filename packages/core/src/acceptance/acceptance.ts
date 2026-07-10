@@ -46,7 +46,11 @@ export async function runAcceptance(
 
 function runOne(cwd: string, command: string, signal: AbortSignal, timeoutMs: number, maxOutput: number): Promise<CommandResult> {
   return new Promise((resolve) => {
-    const child = spawn("sh", ["-c", command], { cwd });
+    // Cross-platform shell: cmd.exe on Windows, /bin/sh elsewhere.
+    const child =
+      process.platform === "win32"
+        ? spawn(process.env["ComSpec"] ?? "cmd.exe", ["/d", "/s", "/c", command], { cwd })
+        : spawn("sh", ["-c", command], { cwd });
     let output = "";
     let settled = false;
     const capture = (buf: Buffer): void => {

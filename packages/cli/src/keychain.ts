@@ -6,33 +6,68 @@ const exec = promisify(execFile);
 const SERVICE = "quorum";
 
 /**
- * Secure API-key storage. Uses the macOS Keychain (via `security`) so credentials never live in
- * files (a core Quorum principle). On other platforms it falls back to env vars only — the key is
- * not persisted and the user is told to export it. Keys are stored under account = the env-var name
- * (e.g. OPENROUTER_API_KEY) so adapters resolve them uniformly.
+ * Secure API-key storage — credentials never live in files (a core Quorum principle):
+ *  • macOS  → Keychain via `security`
+ *  • Linux  → libsecret via `secret-tool` (GNOME Keyring / KWallet), if installed
+ *  • else   → env vars only (the key isn't persisted; the user is told to export it)
+ * Keys are stored under account = the env-var name (e.g. OPENROUTER_API_KEY) so adapters resolve
+ * them uniformly.
  */
-export const keychainAvailable = (): boolean => platform() === "darwin";
+type Backend = "macos" | "secret-tool" | "none";
+let backendCache: Backend | undefined;
+
+async function backend(): Promise<Backend> {
+  if (backendCache) return backendCache;
+  if (platform() === "darwin") return (backendCache = "macos");
+  if (platform() === "linux") {
+    const ok = await exec("secret-tool", ["--version"]).then(() => true).catch(() => false);
+    return (backendCache = ok ? "secret-tool" : "none");
+  }
+  return (backendCache = "none");
+}
+
+export function keychainAvailable(): boolean {
+  return platform() === "darwin" || platform() === "linux";
+}
 
 export async function setSecret(account: string, secret: string): Promise<boolean> {
-  if (!keychainAvailable()) return false;
-  await exec("security", ["add-generic-password", "-a", account, "-s", SERVICE, "-w", secret, "-U"]);
-  return true;
+  const b = await backend();
+  if (b === "macos") {
+    await exec("security", ["add-generic-password", "-a", account, "-s", SERVICE, "-w", secret, "-U"]);
+    return true;
+  }
+  if (b === "secret-tool") {
+    await new Promise<void>((resolve, reject) => {
+      const child = execFile("secret-tool", ["store", "--label", `${SERVICE}:${account}`, "service", SERVICE, "account", account], (err) => (err ? reject(err) : resolve()));
+      child.stdin?.end(secret);
+    });
+    return true;
+  }
+  return false;
 }
 
 export async function getSecret(account: string): Promise<string | undefined> {
-  if (!keychainAvailable()) return undefined;
+  const b = await backend();
   try {
-    const { stdout } = await exec("security", ["find-generic-password", "-a", account, "-s", SERVICE, "-w"]);
-    return stdout.trim() || undefined;
+    if (b === "macos") {
+      const { stdout } = await exec("security", ["find-generic-password", "-a", account, "-s", SERVICE, "-w"]);
+      return stdout.trim() || undefined;
+    }
+    if (b === "secret-tool") {
+      const { stdout } = await exec("secret-tool", ["lookup", "service", SERVICE, "account", account]);
+      return stdout.trim() || undefined;
+    }
   } catch {
     return undefined;
   }
+  return undefined;
 }
 
 export async function deleteSecret(account: string): Promise<void> {
-  if (!keychainAvailable()) return;
+  const b = await backend();
   try {
-    await exec("security", ["delete-generic-password", "-a", account, "-s", SERVICE]);
+    if (b === "macos") await exec("security", ["delete-generic-password", "-a", account, "-s", SERVICE]);
+    else if (b === "secret-tool") await exec("secret-tool", ["clear", "service", SERVICE, "account", account]);
   } catch {
     /* not present */
   }
