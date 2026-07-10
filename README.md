@@ -126,11 +126,43 @@ providers:
 ```
 
 - `claude` / `codex` reuse your existing subscription logins — no API key needed.
-- `<provider>/<model>` uses the generic OpenAI-compatible client — OpenRouter (free & paid), a local
-  [OmniRoute](https://github.com/diegosouzapw/OmniRoute)/LiteLLM gateway, or a direct API.
+- `<provider>/<model>` uses the generic OpenAI-compatible client — OpenRouter, Groq, Together AI,
+  Fireworks AI, DeepInfra, a local [OmniRoute](https://github.com/diegosouzapw/OmniRoute)/LiteLLM
+  gateway, or a direct API.
 - `ollama/<model>` is the never-offline free fallback.
 
-API keys come from environment variables only — never stored in files.
+API keys come from environment variables (or your OS Keychain) only — never stored in files.
+
+### One key, many models (skip multiple subscriptions)
+
+You don't need to subscribe to every AI. A single **aggregator** key unlocks dozens of models — GPT,
+Claude, Gemini, Llama, DeepSeek, and more — and Quorum will seat *several of them at once* as
+proposer, critic, and arbiter, giving you real multi-model debate from one login:
+
+```yaml
+# Just an OpenRouter key → a full roundtable, three different models:
+seats:
+  proposer: { chain: [openrouter/deepseek/deepseek-chat:free] }   # free model drafts
+  critic:   { chain: [openrouter/anthropic/claude-3.7-sonnet] }   # a strong model critiques
+  arbiter:  { chain: [openrouter/google/gemini-2.5-pro] }         # a third decides
+providers:
+  openrouter: { base_url: "https://openrouter.ai/api/v1", key_env: OPENROUTER_API_KEY }
+```
+
+Built-in aggregators (just add the API key — no `providers:` block needed for these):
+
+| Provider | Model-id prefix | Key env |
+|---|---|---|
+| OpenRouter | `openrouter/…` | `OPENROUTER_API_KEY` |
+| Groq | `groq/…` | `GROQ_API_KEY` |
+| Together AI | `together/…` | `TOGETHER_API_KEY` |
+| Fireworks AI | `fireworks/…` | `FIREWORKS_API_KEY` |
+| DeepInfra | `deepinfra/…` | `DEEPINFRA_API_KEY` |
+
+> **Note:** aggregator models plan, debate, and verify — but to **build code autonomously** you still
+> need a **Claude** or **Codex** login, since those two are the executors that edit files in a
+> worktree. An `openrouter/anthropic/claude-…` is chat-only and can't drive the build loop. In setup,
+> pick an aggregator and Quorum offers to auto-spread its models across the three seats for you.
 
 ## Architecture
 

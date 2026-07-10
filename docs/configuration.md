@@ -16,10 +16,37 @@ A seat's `chain` is a **failover list**, tried in order. Ids:
 | `codex/<model>` | `codex/gpt-5.5` | a specific OpenAI model via your login |
 | `ollama/<model>` | `ollama/llama3` | a local Ollama model — free, never rate-limited |
 | `<provider>/<model>` | `openrouter/nousresearch/hermes-3-llama-3.1-405b:free` | any OpenAI-compatible provider from your `providers:` map |
+| built-in aggregators | `openrouter/…`, `groq/…`, `together/…`, `fireworks/…`, `deepinfra/…` | one key unlocks many models (no `providers:` block needed) |
 | built-in APIs | `openai-api/gpt-5.5`, `anthropic-api/claude-opus-4-8`, `gemini-api/gemini-2.5-pro` | direct API access (key from env/Keychain) |
 
 Models ending in `:free` cost nothing (OpenRouter's free tier). Free models can deliberate but not
 execute; **only `claude`/`codex` seats can build**.
+
+### One key, many models (skip multiple subscriptions)
+
+Don't want to pay for several AI services? A single **aggregator** key unlocks dozens of models and
+Quorum can seat several of them at once — a full roundtable from one login:
+
+```yaml
+seats:
+  proposer: { chain: [groq/llama-3.1-8b-instant] }          # fast + free tier drafts
+  critic:   { chain: [groq/llama-3.3-70b-versatile] }        # a bigger model critiques
+  arbiter:  { chain: [groq/deepseek-r1-distill-llama-70b] }  # a third decides
+# no providers: block needed — groq/together/fireworks/deepinfra/openrouter are built in
+```
+
+| Aggregator | Prefix | Key env |
+|---|---|---|
+| OpenRouter | `openrouter/…` | `OPENROUTER_API_KEY` |
+| Groq | `groq/…` | `GROQ_API_KEY` |
+| Together AI | `together/…` | `TOGETHER_API_KEY` |
+| Fireworks AI | `fireworks/…` | `FIREWORKS_API_KEY` |
+| DeepInfra | `deepinfra/…` | `DEEPINFRA_API_KEY` |
+
+In `/models`, pick an aggregator and Quorum offers to **auto-spread** its models across the three
+seats. To also **build code autonomously**, add a `claude` or `codex` login — those two are the only
+executors that edit files; an `openrouter/anthropic/claude-…` is chat-only and can't drive the build.
+(OpenRouter still needs its `providers:` entry, which `/models` writes for you.)
 
 ## Full example (frugal: free drafts, paid verifies)
 

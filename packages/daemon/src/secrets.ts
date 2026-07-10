@@ -68,7 +68,7 @@ export async function deleteSecret(account: string): Promise<void> {
 
 /** Env-var names to look up in the Keychain: built-in direct providers + any from config. */
 export function knownKeyEnvs(config: { providers: Record<string, { keyEnv: string }> }): string[] {
-  const builtin = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"];
+  const builtin = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "TOGETHER_API_KEY", "FIREWORKS_API_KEY", "DEEPINFRA_API_KEY"];
   return [...new Set([...builtin, ...Object.values(config.providers).map((p) => p.keyEnv)])];
 }
 

@@ -8,6 +8,12 @@ export const DIRECT_PROVIDERS: Record<string, { baseUrl: string; keyEnv: string 
   "anthropic-api": { baseUrl: "https://api.anthropic.com/v1", keyEnv: "ANTHROPIC_API_KEY" },
   // Gemini's OpenAI-compatibility endpoint.
   "gemini-api": { baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", keyEnv: "GEMINI_API_KEY" },
+  // OpenRouter-style aggregators: ONE key unlocks many models (GPT, Claude, Gemini, Llama,
+  // DeepSeek, …), so you don't need to subscribe to each AI separately. All OpenAI-compatible.
+  groq: { baseUrl: "https://api.groq.com/openai/v1", keyEnv: "GROQ_API_KEY" },
+  together: { baseUrl: "https://api.together.xyz/v1", keyEnv: "TOGETHER_API_KEY" },
+  fireworks: { baseUrl: "https://api.fireworks.ai/inference/v1", keyEnv: "FIREWORKS_API_KEY" },
+  deepinfra: { baseUrl: "https://api.deepinfra.com/v1/openai", keyEnv: "DEEPINFRA_API_KEY" },
 };
 
 export interface ResolveHttpOpts {

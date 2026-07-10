@@ -54,6 +54,18 @@ describe("buildConfigYaml", () => {
     expect(cfg.seats.critic?.chain).toContain("ollama/llama3");
   });
 
+  it("spreads several models from ONE aggregator key across the three seats", () => {
+    const yaml = buildConfigYaml(
+      ["openrouter/deepseek/deepseek-chat:free", "openrouter/anthropic/claude-3.5", "openrouter/openai/gpt-4o"],
+      { openrouter: { baseUrl: "https://openrouter.ai/api/v1", keyEnv: "OPENROUTER_API_KEY" } },
+    );
+    const cfg = parseSessionConfig(parseYaml(yaml));
+    const leads = [cfg.seats.proposer!.chain[0], cfg.seats.critic!.chain[0], cfg.seats.arbiter!.chain[0]];
+    // distinct models lead the three seats — a full roundtable from a single subscription
+    expect(new Set(leads).size).toBeGreaterThanOrEqual(2);
+    expect(leads.every((m) => m!.startsWith("openrouter/"))).toBe(true);
+  });
+
   it("handles an ollama-only selection (all seats same model)", () => {
     const cfg = parseSessionConfig(parseYaml(buildConfigYaml(["ollama/llama3", "ollama/llama3"])));
     expect(cfg.seats.proposer?.chain).toEqual(["ollama/llama3"]);
