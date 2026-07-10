@@ -22,4 +22,13 @@ describe("renderDashboard", () => {
   it("escapes the token as a JS string literal", () => {
     expect(renderDashboard('a"b')).toContain('"a\\"b"');
   });
+
+  it("includes the settings panel wired to the config API", () => {
+    expect(html).toContain('id="settings"'); // ⚙ button
+    expect(html).toContain('id="settingsPanel"');
+    expect(html).toContain('id="cfgText"'); // editor
+    expect(html).toContain('id="cfgSave"');
+    expect(html).toContain('"/config"'); // GET
+    expect(html).toContain('api("/config", "PUT"'); // save
+  });
 });
