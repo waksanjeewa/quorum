@@ -2,7 +2,7 @@ import { createInterface, type Interface as Readline } from "node:readline";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { QuorumHttpServer, loadConfig, doctorReport, buildTriageRunner } from "@quorum/daemon";
-import { triage, quickTriage } from "@quorum/core";
+import { triage, quickTriage, parseSessionConfig } from "@quorum/core";
 import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
 import { runSetup } from "./setup.js";
@@ -134,8 +134,24 @@ export async function repl(projectRoot: string): Promise<void> {
           rl.resume();
           return;
         case "doctor": {
-          const report = await doctorReport(await loadConfig(projectRoot));
-          for (const c of report) console.log(`  ${c.ok ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m"} ${c.id} \x1b[2m${c.detail}\x1b[0m`);
+          const config = await loadConfig(projectRoot);
+          const report = await doctorReport(config);
+          console.log(C.bold("\n  Your seats:"));
+          for (const [seat, s] of Object.entries(config.seats)) {
+            const models = s.chain.map((m) => (m === "claude" || m === "codex" ? `${m} ${C.dim("(account default)")}` : m)).join(C.dim(" → "));
+            console.log(`    ${C.cyan(seat.padEnd(9))} ${models}`);
+          }
+          console.log(C.bold("\n  Models in use:"));
+          for (const c of report) console.log(`    ${c.ok ? C.green("✓") : C.red("✗")} ${c.id} ${C.dim(c.detail)}`);
+          // Which logged-in models aren't in the config yet?
+          const inUse = new Set(report.map((c) => c.id.split("/")[0]));
+          const detected = await doctorReport(
+            parseSessionConfig({ seats: { proposer: { chain: ["claude"] }, critic: { chain: ["codex"] }, arbiter: { chain: ["ollama/llama3"] } } }),
+          ).catch(() => []);
+          const extra = detected.filter((d) => d.ok && !inUse.has(d.id.split("/")[0]));
+          if (extra.length) console.log(C.dim(`\n  Also logged in (not in your config): ${extra.map((e) => e.id).join(", ")} — add with /models`));
+          const unique = new Set(Object.values(config.seats).flatMap((s) => s.chain));
+          if (unique.size === 1) console.log(C.dim(`  All seats use one model — /models to add others for real multi-model debate.`));
           return;
         }
         case "status": {
