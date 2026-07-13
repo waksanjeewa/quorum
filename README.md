@@ -9,20 +9,23 @@
 
 **🌐 Site:** [waksanjeewa.github.io/quorum](https://waksanjeewa.github.io/quorum) &middot; **Docs:** [Getting started](docs/getting-started.md)
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+```
+
+Then run:
+
+```bash
+quorum
+```
+
 **Many models, working together — the session will never die.** Multiple AI models collaborate on one goal — brainstorming,
 planning, and building together — handing off to each other when usage limits hit, with you able to
 step in at any moment without stopping the work.
 
-At a glance: you give Quorum a goal, a roundtable of models proposes/critiques/decides, then Claude
-or Codex builds in an isolated worktree, verifies, reviews, and merges.
-
-```mermaid
-flowchart LR
-    G([your goal]) --> R[🗣 roundtable<br/>proposer · critic · arbiter<br/>debate & converge]
-    R --> W[🔨 workshop<br/>Claude/Codex builds it in an<br/>isolated git worktree]
-    W --> M([✅ verified code,<br/>merged])
-    F[[free models draft<br/>paid models verify<br/>limits? next model picks up]] -.-> R & W
-```
+At a glance: `Goal → Roundtable → Workshop → Verified merge`.
 
 Quorum is **local-first**: no server, no accounts, no telemetry. Your prompts and credentials never
 leave your machine. It reuses the logins you already have (Claude Code, Codex) and can fall back to

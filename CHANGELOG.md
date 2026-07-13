@@ -6,6 +6,8 @@
 - Dashboard and public docs now show the current public version (`v0.8.0`).
 - GitHub README now uses a custom dark Quorum hero graphic, contributor attribution, and a clearer
   at-a-glance product flow.
+- GitHub README now surfaces the one-line install command immediately under the repo badges and uses
+  a shorter, less cramped hero graphic.
 - Public webpage now includes a visual terminal → dashboard → verified merge walkthrough.
 - Interactive shell `/` menu now supports terminal-popup discovery with ↑/↓ selection and Enter.
 - Dashboard now has working **New roundtable**, a left-side roundtable list, and active
