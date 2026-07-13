@@ -8,6 +8,8 @@
   at-a-glance product flow.
 - GitHub README now surfaces the one-line install command immediately under the repo badges and uses
   a shorter, less cramped hero graphic.
+- README hero no longer embeds the long install command, preventing clipped text while keeping the
+  install command copyable above the fold.
 - Public webpage now includes a visual terminal → dashboard → verified merge walkthrough.
 - Interactive shell `/` menu now supports terminal-popup discovery with ↑/↓ selection and Enter.
 - Dashboard now has working **New roundtable**, a left-side roundtable list, and active
