@@ -234,6 +234,44 @@ describe("runRoundtable — budget", () => {
     const events = await readEvents(session.dir);
     expect(events.some((e) => e.type === "control" && e.action === "pause")).toBe(true);
   });
+
+  it("auto-advances brainstorm to plan at the turn budget and carries notes forward", async () => {
+    const config = cfg({ budgets: { max_turns_per_stage: 2 } });
+    const session = await createSession(root, "keep moving", config);
+    const proposer = new MockAdapter({
+      id: "proposer",
+      script: Array.from({ length: 30 }, () => (ctx: import("@quorum/core").TurnContext) =>
+        ctx.stage === "plan"
+          ? { status: "ok" as const, content: "Concrete plan from carried notes.\nmove: PROPOSE_CONVERGE" }
+          : { status: "ok" as const, content: "brainstorm idea from proposer" },
+      ),
+    });
+    const voter = (id: string) =>
+      new MockAdapter({
+        id,
+        script: Array.from({ length: 30 }, () => (ctx: import("@quorum/core").TurnContext) =>
+          ctx.stage === "plan"
+            ? { status: "ok" as const, content: "approve the concrete plan.\nmove: APPROVE" }
+            : { status: "ok" as const, content: `brainstorm note from ${id}` },
+        ),
+      });
+
+    const result = await runRoundtable({
+      session,
+      seats: { proposer, critic: voter("critic"), arbiter: voter("arbiter") },
+      now: clock(),
+    });
+
+    expect(result.converged).toBe(true);
+    expect(result.stagesCompleted).toEqual(["brainstorm", "plan"]);
+    expect(result.notes.some((n) => n.includes("auto-advanced brainstorm to plan"))).toBe(true);
+    const events = await readEvents(session.dir);
+    expect(events.some((e) => e.type === "stage" && e.from === "brainstorm" && e.to === "plan")).toBe(true);
+    expect(events.some((e) => e.type === "control" && e.action === "pause" && e.detail?.includes("brainstorm"))).toBe(false);
+    const ideas = await readFile(join(sessionFiles.artifactsDir(session.dir), "ideas.md"), "utf8");
+    expect(ideas).toContain("brainstorm turn budget");
+    expect(ideas).toContain("brainstorm idea from proposer");
+  });
 });
 
 describe("runRoundtable — cost budget", () => {

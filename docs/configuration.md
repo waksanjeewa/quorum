@@ -85,7 +85,7 @@ Notes:
 
 | Key | Effect |
 |---|---|
-| `max_turns_per_stage` | pause and ask the human if a stage doesn't converge in N turns |
+| `max_turns_per_stage` | cap deliberation loops; brainstorm soft-advances to planning when possible, later stages pause and ask if they still cannot converge |
 | `max_cost_usd` | stop when cumulative API cost hits the cap (subscription seats don't count) |
 | `wall_clock_max` | stop after e.g. `2h` / `90m` |
 

@@ -57,7 +57,7 @@ The first run drops you straight into the model picker:
 ## 4. Give it a goal
 
 ```
-◆ quorum › build me a CLI that converts CSV to JSON
+◆ quorum ❯ build me a CLI that converts CSV to JSON
 ```
 
 You'll see the roundtable live — proposer, critic, and arbiter debating in different colors, a
@@ -67,7 +67,13 @@ tweak settings, or hit STOP.
 - In a **git repo**, Quorum goes all the way: plan → decompose → **build in an isolated worktree →
   verify → merge**.
 - Anywhere else it deliberates and delivers a plan (`git init` to unlock building).
-- Type anything mid-run to steer the table. `/pause`, `/stop`, `/agents` for who's doing what.
+- Type `/` to open the command popup. Use ↑/↓ and Enter to choose commands like `/models`, `/doctor`,
+  `/dashboard`, `/pause`, `/resume`, `/stop`, and `/status`.
+- Type anything mid-run to steer the table. `/agents` shows the current seats/activity from the
+  terminal; the dashboard also lists every roundtable on the left and shows active agents under
+  **Activity**.
+- If your first message is unclear, Quorum asks a follow-up question instead of starting the wrong
+  goal. Prefix with `/goal` when you intentionally want to skip that check.
 
 ## 5. Cheat sheet
 
@@ -76,6 +82,7 @@ tweak settings, or hit STOP.
 | `quorum` | interactive shell (recommended) |
 | `/models` | pick/change models, add API keys |
 | `/agents` | seats, current task, elapsed time |
+| `/dashboard` | open the live local dashboard |
 | `/doctor` | readiness check |
 | `/pause` `/resume` `/stop` | control the run |
 | `quorum start "<goal>"` | one-shot, non-interactive |

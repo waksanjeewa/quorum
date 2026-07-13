@@ -28,9 +28,10 @@ API models or a local Ollama model so a session can run for free.
 > Status: **Phases 1–3 implemented and tested.** Models deliberate over a shared transcript, hand off
 > on usage limits, and you can inject live — then executor agents carry out the plan by editing code
 > in isolated git worktrees, **verified by a reviewer and merged**, running **multiple tasks in
-> parallel**. Comes with an interactive shell, a web dashboard (with live settings), a **VS Code
-> extension**, `quorum resume`, and frugal free/paid cost policy. All four adapters (Claude, Codex,
-> OpenRouter, Ollama) are verified against live models (see
+> parallel**. Comes with an interactive shell with a branded terminal banner and arrow-key slash
+> menu, a web dashboard with real-time roundtables/activity and live settings, a **VS Code
+> extension**, `quorum resume`, clarification prompts for vague goals, and frugal free/paid cost
+> policy. All four adapters (Claude, Codex, OpenRouter, Ollama) are verified against live models (see
 > [e2e/SMOKE-RESULTS.md](e2e/SMOKE-RESULTS.md)). See [DESIGN.md](DESIGN.md) for the full vision and
 > [tasks/](tasks/) for the build ledger.
 
@@ -75,7 +76,7 @@ Goal → Brainstorm → Plan → Decompose → Build → Verify + Review → Mer
 
 ## Getting started
 
-**Install** (while the repo is private, install from source):
+**Install from source:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
@@ -98,11 +99,15 @@ codex login       # for a `codex` seat (ChatGPT Plus/Pro)
 
 ```
 $ quorum
-  quorum› /models          ← pick your models: log in, or paste an API key (saved to your Keychain)
-  quorum› build me a CLI that converts CSV to JSON
+  ◆ quorum ❯ /models       ← pick your models: log in, or paste an API key (saved to your Keychain)
+  ◆ quorum ❯ build me a CLI that converts CSV to JSON
   … streams live — type to add a message, /pause, /stop …
-  quorum› /help            ← /models /doctor /status /pause /resume /stop /config /exit
+  ◆ quorum ❯ /help         ← /models /doctor /status /pause /resume /stop /config /exit
 ```
+
+Type `/` in the shell to open the command popup; use ↑/↓ and Enter to select, Claude-terminal style.
+If your input is too vague to safely run, Quorum asks a follow-up question instead of charging into
+the wrong goal.
 
 Prefer one-shot commands? `quorum setup` (pick models), `quorum doctor` (check readiness),
 `quorum start "<goal>"` (run once) all work too.
@@ -110,7 +115,8 @@ Prefer one-shot commands? `quorum setup` (pick models), `quorum doctor` (check r
 In a **git repo**, `start` runs the whole thing autonomously — the models deliberate, converge on a
 plan, then an executor builds it in an isolated worktree, verifies it, and merges. In a non-git
 directory it deliberates and produces a plan (`git init` to enable building). Open the printed
-dashboard URL to watch live, drop in a message, or hit **STOP**.
+dashboard URL to watch live, switch between roundtables, inspect active model activity, drop in a
+message, or hit **STOP**.
 
 Commands: `quorum init` · `doctor` · `start "<goal>"` · `status` · `inject "<msg>"` · `pause` ·
 `resume` · `stop` · `attach`.

@@ -39,18 +39,48 @@ export function promptWith(state?: string): string {
   return state ? `${chip}${C.dim(" · " + state)} ${C.brand("❯")} ` : PROMPT;
 }
 
-export const QUORUM_ASCII = [
-  String.raw`      o-----o        ___  _   _  ___  ____  _   _ __  __`,
-  String.raw`   o-/ \   / \-*    / _ \| | | |/ _ \|  _ \| | | |  \/  |`,
-  String.raw`   |   \ \ / / |   | | | | | | | | | | |_) | | | | |\/| |`,
-  String.raw`   o    >X<    o   | |_| | |_| | |_| |  _ <| |_| | |  | |`,
-  String.raw`    \  / / \ \ /    \__\_\\___/ \___/|_| \_\\___/|_|  |_|`,
-  String.raw`      o-----o         ◆  many models, working together`,
+const COMPACT_MARK = [
+  "        ●       ",
+  "    ╭───┴───╮   ",
+  "  ●─╯  ◢◣  ╰─● ",
+  "  │    ◥◤    │  ",
+  "  ●─╮  ◢◣  ╭─● ",
+  "    ╰───┬───╯   ",
+  "        ●       ",
 ] as const;
 
-/** Brand-correct CLI launch logo: emerald → teal → cyan letters, amber consensus subtitle. */
+export const QUORUM_ASCII_WORD = [
+  String.raw`  ___  _   _  ___  ____  _   _ __  __`,
+  String.raw` / _ \| | | |/ _ \|  _ \| | | |  \/  |`,
+  String.raw`| | | | | | | | | | |_) | | | | |\/| |`,
+  String.raw`| |_| | |_| | |_| |  _ <| |_| | |  | |`,
+  String.raw` \__\_\\___/ \___/|_| \_\\___/|_|  |_|`,
+] as const;
+
+export const QUORUM_TERMINAL_LOCKUP = [
+  `${COMPACT_MARK[0]} ${QUORUM_ASCII_WORD[0]}`,
+  `${COMPACT_MARK[1]} ${QUORUM_ASCII_WORD[1]}`,
+  `${COMPACT_MARK[2]} ${QUORUM_ASCII_WORD[2]}`,
+  `${COMPACT_MARK[3]} ${QUORUM_ASCII_WORD[3]}`,
+  `${COMPACT_MARK[4]} ${QUORUM_ASCII_WORD[4]}`,
+  `${COMPACT_MARK[5]}   many models, working together`,
+  `${COMPACT_MARK[6]}   local-first consensus`,
+] as const;
+
+/** Logo-v2-inspired CLI launch lockup: compact mark + correct ASCII QUORUM word. */
 export function quorumLogo(): string {
-  return QUORUM_ASCII.map(gradientLine).join("\n");
+  if (!enabled) return QUORUM_TERMINAL_LOCKUP.join("\n");
+  const e = color24(EMERALD, "●");
+  const word = QUORUM_ASCII_WORD.map((line) => C.text(C.bold(line)));
+  return [
+    `        ${e}        ${word[0]}`,
+    `    ${color24(TEAL, "╭───┴───╮")}    ${word[1]}`,
+    `  ${color24(EMERALD, "●")}${color24(TEAL, "─╯")}  ${color24(EMERALD, "◢")}${color24(CYAN, "◣")}  ${color24(TEAL, "╰─")}${color24(AMBER, "●")}  ${word[2]}`,
+    `  ${color24(TEAL, "│")}    ${color24(CYAN, "◥")}${color24(EMERALD, "◤")}    ${color24(TEAL, "│")}   ${word[3]}`,
+    `  ${color24(CYAN, "●")}${color24(TEAL, "─╮")}  ${color24(TEAL, "◢")}${color24(CYAN, "◣")}  ${color24(TEAL, "╭─")}${color24(CYAN, "●")}  ${word[4]}`,
+    `    ${color24(TEAL, "╰───┬───╯")}      ${C.muted("many models, working together")}`,
+    `        ${color24(TEAL, "●")}        ${C.muted("local-first consensus")}`,
+  ].join("\n");
 }
 
 /** A boxed banner for the shell header. */
@@ -69,25 +99,6 @@ function stripAnsi(s: string): string {
   return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-function gradientLine(line: string): string {
-  if (!enabled) return line;
-  return Array.from(line, (ch, i) => {
-    if (ch === " ") return ch;
-    if (ch === "*" || ch === "◆") return color24(AMBER, ch);
-    return color24(interpolate(i / Math.max(line.length - 1, 1)), ch);
-  }).join("");
-}
-
 function color24([r, g, b]: Rgb, s: string): string {
   return `\x1b[38;2;${r};${g};${b}m${s}\x1b[0m`;
-}
-
-function interpolate(t: number): Rgb {
-  const stops: readonly [Rgb, Rgb, number] = t < 0.5 ? [EMERALD, TEAL, t * 2] : [TEAL, CYAN, (t - 0.5) * 2];
-  const [from, to, local] = stops;
-  return [
-    Math.round(from[0] + (to[0] - from[0]) * local),
-    Math.round(from[1] + (to[1] - from[1]) * local),
-    Math.round(from[2] + (to[2] - from[2]) * local),
-  ];
 }

@@ -1,8 +1,8 @@
 import { createInterface, type Interface as Readline } from "node:readline";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
-import { QuorumHttpServer, loadConfig, doctorReport, buildTriageRunner } from "@quorum/daemon";
-import { triage, quickTriage, parseSessionConfig } from "@quorum/core";
+import { QuorumHttpServer, loadConfig, doctorReport, liveTurnCheck, buildTriageRunner } from "@quorum/daemon";
+import { triage, quickTriage, parseSessionConfig, type SessionConfig } from "@quorum/core";
 import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
 import { runSetup } from "./setup.js";
@@ -11,7 +11,7 @@ import { C, PROMPT, promptWith, quorumLogo } from "./theme.js";
 import type { RunningSession } from "@quorum/daemon";
 
 /** Slash commands + one-line help, for the "type /" menu and Tab completion. */
-const SLASH: Array<[string, string]> = [
+export const SLASH_COMMANDS: Array<[string, string]> = [
   ["/goal", "build this goal directly (skip the chat/greeting check)"],
   ["/models", "pick models — login or paste an API key"],
   ["/dashboard", "open the live web dashboard"],
@@ -25,12 +25,44 @@ const SLASH: Array<[string, string]> = [
   ["/help", "full help"],
   ["/exit", "leave quorum"],
 ];
-const ALL_CMDS = SLASH.map(([c]) => c);
+const ALL_CMDS = SLASH_COMMANDS.map(([c]) => c);
 /** Tab-completion for slash commands (readline calls this). */
-const completeSlash = (line: string): [string[], string] => {
+export const completeSlash = (line: string): [string[], string] => {
   if (!line.startsWith("/")) return [[], line];
   const hits = ALL_CMDS.filter((c) => c.startsWith(line));
   return [hits.length ? hits : ALL_CMDS, line];
+};
+
+export const slashMenuMatches = (line: string): Array<[string, string]> => {
+  if (!line.startsWith("/") || line.includes(" ")) return [];
+  return SLASH_COMMANDS.filter(([c]) => c.startsWith(line));
+};
+
+export const nextSlashSelection = (current: number, count: number, direction: -1 | 1): number =>
+  count <= 0 ? 0 : (current + direction + count) % count;
+
+export const executorIdsForLiveCheck = (config: SessionConfig, okIds: Map<string, boolean>): string[] =>
+  [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter((m) => /^(claude|codex)(\/|$)/.test(m) && okIds.get(m));
+
+export const codexLiveCheckTip = (id: string, detail: string): string =>
+  id.startsWith("codex") && /newer version of Codex|not supported when using Codex/i.test(detail)
+    ? "fix: update the Codex app, or drop the codex seat with /models, or use an API key (openai-api / github / openrouter)."
+    : "";
+
+export const renderSlashMenu = (matches: Array<[string, string]>, cursorColumn = 0, selectedIndex = 0): string => {
+  if (matches.length === 0) return "";
+  const w = Math.max(...matches.map(([c]) => c.length));
+  const selected = Math.min(Math.max(0, selectedIndex), matches.length - 1);
+  const lines = matches.map(([c, d], i) => {
+    const marker = i === selected ? C.amber("›") : " ";
+    const command = i === selected ? C.amber(c.padEnd(w)) : C.brand(c.padEnd(w));
+    return `  ${marker} ${command}  ${C.dim(d)}`;
+  });
+  const column = Math.max(0, Math.floor(cursorColumn));
+  const restoreColumn = column > 0 ? `\x1b[${column}C` : "";
+  // Draw below the prompt, then explicitly move back up to the input line. This avoids depending
+  // on terminal-specific cursor save/restore sequences, which can leave each next key on a new row.
+  return `\n${lines.join("\n")}\x1b[${lines.length}A\r${restoreColumn}`;
 };
 
 const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
@@ -105,7 +137,12 @@ export async function repl(projectRoot: string): Promise<void> {
   let lastEventAt = 0;
   let dashboardUrl = "";
   let busy = false; // true while a goal is being triaged/convened — input is gated until it clears
+  let startupAbort: AbortController | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
+  let selectedSlashCommandForEnter: string | undefined;
+  let activeSlashMenuCommand: string | undefined;
+  let handlingLine = false;
+  let promptPrintedDuringHandle = false;
 
   // ── Ephemeral "/" menu (like Claude): drawn BELOW the prompt with cursor control, erased with
   // \x1b[0J — it never enters scrollback, so nothing piles up. State: how many lines are drawn.
@@ -119,7 +156,10 @@ export async function repl(projectRoot: string): Promise<void> {
   const printAbove = (text: string): void => {
     eraseMenu();
     process.stdout.write("\r\x1b[K" + text + "\n");
-    if (!closed) rl.prompt(true);
+    if (!closed) {
+      rl.prompt(true);
+      if (handlingLine) promptPrintedDuringHandle = true;
+    }
   };
   const info = (text: string): void => printAbove(`\x1b[2m${text}\x1b[0m`);
 
@@ -193,30 +233,45 @@ export async function repl(projectRoot: string): Promise<void> {
   }
   rl.prompt();
 
+  const onProcessSigint = (): void => {
+    if (busy && startupAbort && !startupAbort.signal.aborted) startupAbort.abort();
+  };
+  process.on("SIGINT", onProcessSigint);
+
   const startGoal = async (goal: string, force = false): Promise<void> => {
     // Gate input + show a live spinner while we work out what to do and spin up the table. New
     // keystrokes are paused (buffered by the terminal) until this clears, so goals can't collide.
     busy = true;
+    const startup = new AbortController();
+    startupAbort = startup;
     rl.pause();
     startSpinner("reading your goal…");
     try {
       const config = await loadConfig(projectRoot);
+      if (startup.signal.aborted) return;
       const env = await resolveSecretsEnv(knownKeyEnvs(config));
+      if (startup.signal.aborted) return;
 
       // Triage: don't convene a roundtable for a greeting / small talk / a quick question.
       // Obvious cases are instant (no model call); only ambiguous input costs a model turn.
       // `force` (from /goal) skips triage entirely and goes straight to building.
-      let decision: { intent: "chat" | "build" | "meta"; reply?: string } | null = force ? { intent: "build" } : quickTriage(goal);
+      let decision: { intent: "chat" | "clarify" | "build" | "meta"; reply?: string } | null = force ? { intent: "build" } : quickTriage(goal);
       if (!decision) {
         const triageRunner = buildTriageRunner(config, { env });
         if (triageRunner) {
           startSpinner("thinking…");
-          decision = await triage(triageRunner, goal);
+          decision = await triage(triageRunner, goal, startup.signal);
+          if (startup.signal.aborted) return;
         }
       }
       if (decision?.intent === "chat") {
         stopSpinner();
         printAbove(`  ${C.cyan(decision.reply ?? "Hi!")}`);
+        return;
+      }
+      if (decision?.intent === "clarify") {
+        stopSpinner();
+        printAbove(`  ${C.amber("◆")} ${C.cyan(decision.reply ?? "What should the models build or change?")}`);
         return;
       }
       if (decision?.intent === "meta") {
@@ -226,16 +281,22 @@ export async function repl(projectRoot: string): Promise<void> {
       }
 
       if (session && running) await session.stop();
+      if (startup.signal.aborted) return;
       startSpinner("convening the roundtable — proposer · critic · arbiter…");
       await ensureServer(env);
+      if (startup.signal.aborted) return;
       session = await server!.daemon.createSession(goal, config);
       running = true;
       lastEventAt = Date.now();
     } finally {
       stopSpinner();
+      const cancelled = startup.signal.aborted;
+      startupAbort = undefined;
       busy = false;
       rl.resume();
+      if (cancelled) printAbove("cancelled. Type a goal or /help.");
     }
+    if (!session || startup.signal.aborted) return;
     // Reached only on a real goal (chat/early-return exited above); wipe done, prompt is clean.
     info(`✱ session ${session!.id} started · dashboard ${dashboardUrl}`);
     refreshPrompt();
@@ -300,7 +361,9 @@ export async function repl(projectRoot: string): Promise<void> {
         }
         case "doctor": {
           const config = await loadConfig(projectRoot);
-          const report = await doctorReport(config);
+          const env = await resolveSecretsEnv(knownKeyEnvs(config));
+          const report = await doctorReport(config, { env });
+          const ok = new Map(report.map((c) => [c.id, c.ok]));
           console.log(C.bold("\n  Your seats:"));
           for (const [seat, s] of Object.entries(config.seats)) {
             const models = s.chain.map((m) => (m === "claude" || m === "codex" ? `${m} ${C.dim("(account default)")}` : m)).join(C.dim(" → "));
@@ -312,11 +375,23 @@ export async function repl(projectRoot: string): Promise<void> {
           const inUse = new Set(report.map((c) => c.id.split("/")[0]));
           const detected = await doctorReport(
             parseSessionConfig({ seats: { proposer: { chain: ["claude"] }, critic: { chain: ["codex"] }, arbiter: { chain: ["ollama/llama3"] } } }),
+            { env },
           ).catch(() => []);
           const extra = detected.filter((d) => d.ok && !inUse.has(d.id.split("/")[0]));
           if (extra.length) console.log(C.dim(`\n  Also logged in (not in your config): ${extra.map((e) => e.id).join(", ")} — add with /models`));
           const unique = new Set(Object.values(config.seats).flatMap((s) => s.chain));
           if (unique.size === 1) console.log(C.dim(`  All seats use one model — /models to add others for real multi-model debate.`));
+          const execIds = executorIdsForLiveCheck(config, ok);
+          if (execIds.length) {
+            console.log(C.bold("\n  Build test:"));
+            console.log(C.dim("    Running one tiny turn for Claude/Codex so Codex login/model issues are caught now."));
+            const turns = await liveTurnCheck(config, { ids: execIds, env });
+            for (const t of turns) {
+              console.log(`    ${t.ok ? C.green("✓") : C.red("✗")} ${t.id} ${C.dim(t.detail)}`);
+              const tip = codexLiveCheckTip(t.id, t.detail);
+              if (tip) console.log(`      ${C.dim(tip)}`);
+            }
+          }
           console.log(C.dim(`  Pick specific models (Opus 4.8, GPT-5.5, free OpenRouter…) with /models or the dashboard ⚙ Settings.`));
           return;
         }
@@ -389,13 +464,21 @@ export async function repl(projectRoot: string): Promise<void> {
     // Enter = selection: the cursor just moved onto the menu's first row, so clear-down wipes the
     // menu before any command output prints.
     eraseMenu();
+    const selected = selectedSlashCommandForEnter;
+    selectedSlashCommandForEnter = undefined;
     // While a goal is being triaged/convened, ignore stray input (the terminal buffers it and it
     // replays once we're ready) so a second goal can't race the first.
     if (busy) return;
-    void handle(raw)
+    const selectedFromMenu = selected ?? activeSlashMenuCommand;
+    activeSlashMenuCommand = undefined;
+    const submitted = selectedFromMenu && raw.trim().startsWith("/") && !raw.trim().includes(" ") ? selectedFromMenu : raw;
+    handlingLine = true;
+    promptPrintedDuringHandle = false;
+    void handle(submitted)
       .catch((err) => printAbove(`\x1b[31merror:\x1b[0m ${String(err instanceof Error ? err.message : err)}`))
       .finally(() => {
-        if (!closed && !busy) rl.prompt();
+        handlingLine = false;
+        if (!closed && !busy && !promptPrintedDuringHandle) rl.prompt();
       });
   });
 
@@ -403,7 +486,10 @@ export async function repl(projectRoot: string): Promise<void> {
   // the prompt (cursor hops down, draws, hops back); it filters as you type and is ERASED — not
   // scrolled away — the moment you select (Enter), add an argument, or clear the line. TTY only.
   if (process.stdin.isTTY) {
-    const rlAny = rl as unknown as { line?: string; _refreshLine?: () => void };
+    const rlAny = rl as unknown as { line?: string; cursor?: number; _refreshLine?: () => void };
+    let menuMatches: Array<[string, string]> = [];
+    let menuSelected = 0;
+    let menuLine = "";
     const redrawInput = (): void => {
       try {
         rlAny._refreshLine?.();
@@ -411,40 +497,65 @@ export async function repl(projectRoot: string): Promise<void> {
         rl.prompt(true);
       }
     };
-    const drawMenu = (matches: Array<[string, string]>): void => {
-      eraseMenu();
-      const w = Math.max(...matches.map(([c]) => c.length));
-      const lines = matches.map(([c, d]) => `  ${C.brand(c.padEnd(w))}  ${C.dim(d)}`);
-      // Draw below the prompt, then move the cursor back up onto the prompt row.
-      process.stdout.write("\n" + lines.join("\n") + `\x1b[${lines.length}A\r`);
-      menuOpen = lines.length;
-      redrawInput();
+    const replaceInput = (line: string): void => {
+      rlAny.line = line;
+      rlAny.cursor = line.length;
     };
-    process.stdin.on("keypress", () =>
+    const drawMenu = (matches: Array<[string, string]>, selected = menuSelected): void => {
+      eraseMenu();
+      menuMatches = matches;
+      menuSelected = Math.min(Math.max(0, selected), Math.max(matches.length - 1, 0));
+      activeSlashMenuCommand = menuMatches[menuSelected]?.[0];
+      redrawInput();
+      // Draw after readline refreshes the prompt; refreshing after drawing can clear the popup.
+      process.stdout.write(renderSlashMenu(matches, rl.getCursorPos().cols, menuSelected));
+      menuOpen = matches.length;
+    };
+    process.stdin.on("keypress", (_str: string, key: { name?: string } = {}) => {
+        if (key.name === "return" && menuOpen && menuMatches[menuSelected]) {
+          selectedSlashCommandForEnter = menuMatches[menuSelected]![0];
+          return;
+        }
       setImmediate(() => {
         if (closed || busy) {
           eraseMenu();
           return;
         }
         const line = rlAny.line ?? "";
+        if ((key.name === "up" || key.name === "down") && menuOpen && menuMatches.length) {
+          menuSelected = nextSlashSelection(menuSelected, menuMatches.length, key.name === "down" ? 1 : -1);
+          replaceInput(menuLine);
+          drawMenu(menuMatches, menuSelected);
+          return;
+        }
         if (!line.startsWith("/") || line.includes(" ")) {
           if (menuOpen) {
             eraseMenu();
             redrawInput();
           }
+          menuMatches = [];
+          menuSelected = 0;
+          menuLine = "";
+          activeSlashMenuCommand = undefined;
           return;
         }
-        const matches = SLASH.filter(([c]) => c.startsWith(line));
+        const matches = slashMenuMatches(line);
         if (matches.length === 0) {
           if (menuOpen) {
             eraseMenu();
             redrawInput();
           }
+          menuMatches = [];
+          menuSelected = 0;
+          menuLine = "";
+          activeSlashMenuCommand = undefined;
           return;
         }
-        drawMenu(matches);
-      }),
-    );
+        menuLine = line;
+        menuSelected = Math.min(menuSelected, matches.length - 1);
+        drawMenu(matches, menuSelected);
+      });
+    });
   }
 
   rl.on("SIGINT", () => {
@@ -462,6 +573,7 @@ export async function repl(projectRoot: string): Promise<void> {
   });
 
   await new Promise<void>((resolve) => rl.on("close", () => { closed = true; resolve(); }));
+  process.off("SIGINT", onProcessSigint);
   if (heartbeat) clearInterval(heartbeat);
   if (server) await server.close();
   console.log("\nBye.");

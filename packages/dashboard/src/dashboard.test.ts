@@ -9,6 +9,14 @@ describe("renderDashboard", () => {
     expect(html).toContain('id="feed"');
     expect(html).toContain('id="msg"'); // inject box
     expect(html).toContain('id="stop"'); // STOP button
+    expect(html).toContain('id="sessions"'); // roundtable list
+    expect(html).toContain('id="activity"'); // active agents/activity
+    expect(html).toContain('class="qLogo"'); // real Quorum mark in the header
+    expect(html).toContain('class="qLogo heroLogo"'); // real Quorum mark in the compose hero
+    expect(html).toContain("#F59E0B"); // single amber consensus node
+    expect(html).not.toContain('id="seats"'); // separate agent cards are intentionally gone
+    expect(html).not.toContain("<h3>Agents</h3>");
+    expect(html).not.toContain("<span class=\"dia\">◆</span> Quorum");
     expect(html).toContain("EventSource"); // live stream
   });
 
@@ -43,5 +51,14 @@ describe("renderDashboard", () => {
     expect(html).toContain('"/settings"'); // structured GET/PUT
     expect(html).toContain('"/keys"'); // save API key
     expect(html).toContain("renderSettings"); // model manager
+  });
+
+  it("wires New roundtable, session list, activity, and clarification UX", () => {
+    expect(html).toContain("refreshSessions");
+    expect(html).toContain("showCompose");
+    expect(html).toContain("t.intent === \"clarify\"");
+    expect(html).toContain("Roundtables");
+    expect(html).toContain("Activity");
+    expect(html).toContain("activitySeat"); // agent/model chips live under Activity
   });
 });

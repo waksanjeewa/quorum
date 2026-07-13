@@ -5,8 +5,10 @@ packages needed by consumers. This is the checklist to make it installable by th
 
 ## Pre-flight
 
-- [ ] `corepack pnpm build && corepack pnpm test` green
-- [ ] Bump the version in `packages/cli/package.json` (+ add a `CHANGELOG.md` entry)
+- [ ] `corepack pnpm build && corepack pnpm lint && corepack pnpm test` green
+- [ ] Run a redacted secret scan before changing repository visibility
+- [ ] Confirm public-facing docs and brand assets use the Quorum palette only (no purple/violet/magenta/indigo)
+- [ ] Bump the version in `packages/cli/package.json` when publishing a new npm package (+ add a `CHANGELOG.md` entry)
 - [ ] Verify the bundle is self-contained:
   ```bash
   cd packages/cli && npm pack --pack-destination /tmp
@@ -15,6 +17,14 @@ packages needed by consumers. This is the checklist to make it installable by th
   ```
 
 ## Make the repo public
+
+Check visibility first:
+
+```bash
+gh repo view waksanjeewa/quorum --json nameWithOwner,visibility,url
+```
+
+If it is still private:
 
 ```bash
 gh repo edit waksanjeewa/quorum --visibility public --accept-visibility-change-consequences

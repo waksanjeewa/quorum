@@ -120,7 +120,7 @@
     <div class="card"><div class="ico">🔨</div><h3>It actually builds</h3><p>Plans become code: executors edit files in isolated git worktrees, run your acceptance checks, get reviewed, and merge — in parallel, across independent tasks.</p></div>
     <div class="card"><div class="ico">💸</div><h3>Frugal by default</h3><p>Free models (Ollama, OpenRouter :free) do the bulk drafting; your paid models are spent only on verifying and improving. Hard cost + time caps.</p></div>
     <div class="card"><div class="ico">🔒</div><h3>Local-first &amp; private</h3><p>No server, no accounts, no telemetry. Prompts and transcripts stay on your machine; API keys live in your OS Keychain, never in a file.</p></div>
-    <div class="card"><div class="ico">🧑‍💻</div><h3>You're at the table</h3><p>Watch the debate live in a shell or web dashboard, drop a message in mid-run without pausing, tweak models in a visual settings panel, and a big red STOP.</p></div>
+    <div class="card"><div class="ico">🧑‍💻</div><h3>You're at the table</h3><p>Watch the debate live in a branded shell or web dashboard, switch roundtables, see active model activity, drop a message in mid-run, tweak models, and hit the big red STOP.</p></div>
     <div class="card"><div class="ico">⏸️</div><h3>Resumable</h3><p>Everything is plain files on disk. Close your laptop, come back, <code>quorum resume</code> — it picks up exactly where it left off.</p></div>
     <div class="card"><div class="ico">🔁</div><h3>Bring your logins</h3><p>Reuses your existing Claude Code and Codex logins — no API keys required for the models you already pay for.</p></div>
     <div class="card"><div class="ico">🧩</div><h3>Extensible</h3><p>Any OpenAI-compatible endpoint — OpenRouter, a local gateway, or a lab API — plugs in. New agent platforms need one small adapter.</p></div>
@@ -201,7 +201,7 @@
   <div class="steps">
     <div class="s"><div class="n">1</div><div><b>Install from source</b> <span style="color:var(--muted)">(npm one-liner coming soon)</span><br><code>curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash</code><br><span style="color:var(--muted);font-size:13px">or: <code>git clone https://github.com/waksanjeewa/quorum &amp;&amp; cd quorum &amp;&amp; ./install.sh</code></span></div></div>
     <div class="s"><div class="n">2</div><div><b>Log in to models you want</b><br><code>claude login</code> &nbsp; <code>codex login</code> &nbsp; or paste an API key in setup (saved to your Keychain), or <code>ollama serve</code> for free local.</div></div>
-    <div class="s"><div class="n">3</div><div><b>Go</b><br><code>quorum</code> opens an interactive shell — pick models with <code>/models</code>, then just type a goal like <i>“build me a CSV-to-JSON CLI.”</i> In a git repo it plans <b>and builds</b>.</div></div>
+    <div class="s"><div class="n">3</div><div><b>Go</b><br><code>quorum</code> opens an interactive shell — type <code>/</code> for the arrow-key command menu, pick models with <code>/models</code>, then enter a goal like <i>“build me a CSV-to-JSON CLI.”</i> If the goal is unclear, Quorum asks a follow-up first; in a git repo it plans <b>and builds</b>.</div></div>
   </div>
   <div style="text-align:center;margin-top:34px">
     <a class="btn primary" href="https://github.com/waksanjeewa/quorum#readme">Read the docs</a>

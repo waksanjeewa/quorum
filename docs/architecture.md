@@ -23,8 +23,8 @@ flowchart LR
     V -- yes --> M[Merge to your branch]
     V -- no --> E
     M --> Done([Committed, verified code])
-    style G fill:#d946ef,color:#fff
-    style Done fill:#16a34a,color:#fff
+    style G fill:#10B981,color:#04120e
+    style Done fill:#F59E0B,color:#04120e
 ```
 
 Deliberation stages work anywhere (plans, documents, decisions); the execute stage needs a git repo.
@@ -66,7 +66,7 @@ the **same worktree**.
 ```mermaid
 flowchart TB
     CLI[quorum CLI / interactive shell] --> Daemon
-    Dash[Web dashboard<br/>transcript · inject · settings · STOP] -- "localhost HTTP + SSE<br/>(bearer token)" --> Daemon
+    Dash[Web dashboard<br/>roundtables · activity · inject · settings · STOP] -- "localhost HTTP + SSE<br/>(bearer token)" --> Daemon
     Daemon[Daemon<br/>sessions · seats · failover · budgets] --> Core
     Core[Engine<br/>roundtable · decompose · execute · ledger] --> Disk[(.quorum/<br/>transcript · spec · tasks · worktrees)]
     Daemon --> Adapters[Adapters]
@@ -92,7 +92,8 @@ for judgement (verifying, catching flaws, deciding). Frugal mode encodes exactly
 
 ## Security model
 
-- Local only: daemon binds `127.0.0.1`, per-run bearer token; the dashboard is served locally.
+- Local only: daemon binds `127.0.0.1`, per-run bearer token; the dashboard is served locally and
+  keeps all session/agent activity on your machine.
 - Credentials: existing CLI logins are reused as-is; API keys live in env vars or the OS Keychain —
   **never in files**.
 - Building: isolated worktrees, acceptance-gated merges, no pushes/deploys, instant kill switch.

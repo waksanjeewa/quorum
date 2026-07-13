@@ -3,6 +3,33 @@
 // No external CDN/scripts/fonts — everything inline, so it works offline and inside a future
 // VS Code webview.
 
+function logoMark(gradientId: string, className = "qLogo"): string {
+  return `<svg class="${className}" viewBox="0 0 100 100" role="img" aria-label="Quorum logo">
+  <defs>
+    <linearGradient id="${gradientId}" x1="18" y1="22" x2="82" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10B981"/>
+      <stop offset="0.52" stop-color="#0EA5A4"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <path class="ring" d="M50 14 80.3 32.5 80.3 67.5 50 86 19.7 67.5 19.7 32.5Z" fill="none" stroke="url(#${gradientId})" stroke-width="2.2" stroke-linejoin="round"/>
+  <g stroke="#0A0F12" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M50 50 50 31 66.5 40.5Z" fill="#10B981"/>
+    <path d="M50 50 66.5 40.5 66.5 59.5Z" fill="#0EA5A4"/>
+    <path d="M50 50 66.5 59.5 50 69Z" fill="#22D3EE"/>
+    <path d="M50 50 50 69 33.5 59.5Z" fill="#0EA5A4"/>
+    <path d="M50 50 33.5 59.5 33.5 40.5Z" fill="#10B981"/>
+    <path d="M50 50 33.5 40.5 50 31Z" fill="#22D3EE"/>
+  </g>
+  <circle cx="50" cy="14" r="4.8" fill="#10B981"/>
+  <circle cx="80.3" cy="32.5" r="5.2" fill="#F59E0B"/>
+  <circle cx="80.3" cy="67.5" r="4.8" fill="#22D3EE"/>
+  <circle cx="50" cy="86" r="4.8" fill="#0EA5A4"/>
+  <circle cx="19.7" cy="67.5" r="4.8" fill="#22D3EE"/>
+  <circle cx="19.7" cy="32.5" r="4.8" fill="#10B981"/>
+</svg>`;
+}
+
 const STYLE = `
 :root { color-scheme: light dark;
   --bg:#f7faf9; --fg:#0b1210; --muted:#5b6b68; --line:#e0e9e6; --card:#ffffff;
@@ -16,6 +43,9 @@ const STYLE = `
 body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--bg); flex-wrap:wrap; flex:none; }
 h1 { font-size:15px; margin:0; font-weight:700; }
+.brand { display:flex; align-items:center; gap:8px; letter-spacing:-.01em; }
+.qLogo { width:24px; height:24px; flex:none; display:block; }
+.qLogo .ring { opacity:.62; }
 .dia { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 .stage { font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
 .spacer { flex:1; }
@@ -34,11 +64,12 @@ body[data-view="live"] .goalbar { display:flex; }
 /* ── Compose / landing (no active session) ───────────────────────── */
 #compose { display:none; flex:1; overflow:auto; background:radial-gradient(60% 45% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent); }
 body[data-view="compose"] #compose { display:block; }
-main { display:none; flex:1; min-height:0; grid-template-columns:220px 1fr; grid-template-rows:1fr auto; }
+main { display:none; flex:1; min-height:0; grid-template-columns:280px 1fr; grid-template-rows:1fr auto; }
 body[data-view="live"] main { display:grid; }
 .composeWrap { max-width:760px; margin:0 auto; padding:44px 20px; }
 .composeWrap h2 { text-align:center; font-size:28px; margin:0 0 6px; letter-spacing:-.01em; }
-.composeWrap h2 .dia { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.heroBrand { display:inline-flex; align-items:center; justify-content:center; gap:10px; }
+.heroLogo { width:42px; height:42px; filter:drop-shadow(0 12px 30px color-mix(in srgb, var(--accent) 25%, transparent)); }
 .composeWrap .tag { display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:1px 8px; vertical-align:middle; margin-left:8px; }
 .composeWrap .subtitle { text-align:center; color:var(--muted); margin:0 auto 22px; max-width:560px; }
 .composeCard { border:1px solid var(--line); border-radius:16px; background:var(--card); padding:18px; box-shadow:0 18px 50px -28px color-mix(in srgb, var(--accent) 70%, transparent); }
@@ -61,11 +92,20 @@ body[data-view="live"] main { display:grid; }
 .composeRow { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px; }
 .composeRow .start { padding:9px 20px; font-size:14px; }
 
-aside { border-right:1px solid var(--line); padding:12px; overflow:auto; grid-row:1; grid-column:1; }
-.seat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px; }
-.seat .role { font-weight:600; text-transform:capitalize; }
-.seat .model { font-size:12px; color:var(--muted); word-break:break-all; }
-.seat.paused { opacity:.55; }
+aside { border-right:1px solid var(--line); padding:12px; overflow:auto; grid-row:1; grid-column:1; display:flex; flex-direction:column; gap:14px; }
+.sideBlock h3 { margin:0 0 8px; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+.sessionItem { display:block; width:100%; text-align:left; border:1px solid var(--line); background:var(--card); border-radius:10px; padding:8px 10px; margin-bottom:8px; }
+.sessionItem.active { border-color:var(--accent); box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent) inset; }
+.sessionItem .goal { font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sessionItem .meta { font-size:11px; color:var(--muted); margin-top:2px; }
+.emptySide { color:var(--muted); font-size:12px; border:1px dashed var(--line); border-radius:10px; padding:9px; }
+.activityCard { background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 12%,var(--card)),var(--card)); border:1px solid var(--line); border-radius:12px; padding:10px; }
+.activityTop { display:flex; align-items:center; gap:8px; font-weight:700; }
+.pulse { width:8px; height:8px; border-radius:999px; background:var(--accent); box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent); }
+.activityNote { margin-top:7px; color:var(--fg); font-size:12px; }
+.activityMeta { margin-top:6px; color:var(--muted); font-size:11px; }
+.activitySeats { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+.activitySeat { border:1px solid var(--line); border-radius:999px; padding:2px 7px; font-size:10px; color:var(--muted); }
 #feed { overflow:auto; padding:16px; grid-row:1; grid-column:2; }
 .ev { margin-bottom:14px; }
 .ev .who { font-weight:600; }
@@ -112,7 +152,7 @@ body[data-view="compose"] .liveonly { display:none; }
 code.cmd { background:var(--card); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
 `;
 
-const SEAT_COLORS = ["#0891b2", "#a21caf", "#16a34a", "#ca8a04", "#2563eb"];
+const SEAT_COLORS = ["#10B981", "#0EA5A4", "#22D3EE", "#F59E0B", "#8FA3A0"];
 
 function script(token: string, baseUrl: string): string {
   return `
@@ -122,7 +162,8 @@ const H = { authorization: "Bearer " + TOKEN, "content-type": "application/json"
 const api = (p, m="GET", b) => fetch(BASE + p, { method:m, headers:H, body: b?JSON.stringify(b):undefined });
 const $ = id => document.getElementById(id);
 const feed = $("feed");
-const seatsEl = $("seats");
+const sessionsEl = $("sessions");
+const activityEl = $("activity");
 const stageEl = $("stage");
 const seatColor = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return ${JSON.stringify(SEAT_COLORS)}[h % ${SEAT_COLORS.length}]; };
 const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props||{}); for (const k of kids) if(k!=null) e.append(k); return e; };
@@ -131,6 +172,9 @@ const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
 let sessionId = null;
 let settings = null;   // cached /settings for the compose view
 let es = null;         // live EventSource
+let activeStatus = null;
+let activityNote = "";
+const fmtElapsed = ms => { const s=Math.floor((ms||0)/1000); return s<60 ? s+"s" : Math.floor(s/60)+"m "+(s%60)+"s"; };
 
 async function loadSettings() { settings = await (await api("/settings")).json(); return settings; }
 
@@ -139,8 +183,28 @@ function setThinking(text) {
   let e = $("thinking");
   if (!e) { e = document.createElement("div"); e.id = "thinking"; e.className = "ev thinking"; }
   e.textContent = text; feed.appendChild(e); feed.scrollTop = feed.scrollHeight;
+  setActivity(text);
 }
 function clearThinking() { const e = $("thinking"); if (e) e.remove(); }
+
+function setActivity(note) { activityNote = note || ""; renderActivity(activeStatus); }
+function renderActivity(status) {
+  if (status) activeStatus = status;
+  activityEl.innerHTML = "";
+  if (!activeStatus) {
+    activityEl.append(el("div", {className:"emptySide", textContent:"No active roundtable selected."}));
+    return;
+  }
+  const s = activeStatus;
+  const card = el("div", {className:"activityCard"});
+  card.append(el("div", {className:"activityTop"}, el("span", {className:"pulse"}), el("span", {textContent:s.state + " · " + s.stage})));
+  card.append(el("div", {className:"activityNote", textContent:activityNote || (s.currentTask ? "Building task " + s.currentTask : "Waiting for the next model turn…")}));
+  card.append(el("div", {className:"activityMeta", textContent:s.turns + " turns · " + fmtElapsed(s.elapsedMs) + (s.currentTask ? " · task " + s.currentTask : "")}));
+  const seats = el("div", {className:"activitySeats"});
+  for (const [seat, info] of Object.entries(s.seats || {})) seats.append(el("span", {className:"activitySeat", textContent:seat + ": " + info.model}));
+  card.append(seats);
+  activityEl.append(card);
+}
 
 function addEvent(e) {
   if (e.type === "thinking") { setThinking("◌ " + e.seat + " (" + e.model + ") is thinking…"); return; }
@@ -150,36 +214,60 @@ function addEvent(e) {
   if (e.type === "turn") {
     div.innerHTML = '<span class="who" style="color:'+seatColor(e.seat)+'">'+e.seat+'</span><span class="model">'+e.model+'</span>'+(e.move?'<span class="move">'+e.move+'</span>':'')+'<div class="content"></div>';
     div.querySelector(".content").textContent = e.content;
+    setActivity(e.seat + " answered" + (e.move ? " · " + e.move : ""));
   } else if (e.type === "human") {
     div.innerHTML = '<span class="who">you</span><div class="content"></div>';
     div.querySelector(".content").textContent = e.content;
-  } else if (e.type === "stage") { div.textContent = "stage → " + e.to; stageEl.textContent = e.to; }
-  else if (e.type === "seat_change") div.textContent = "↪ " + e.seat + ": " + e.from + " → " + e.to + " (" + e.reason + ")" + (e.detail ? ": " + e.detail : "");
-  else if (e.type === "control") div.textContent = "• " + e.action + (e.detail? ": "+e.detail : "") + " (" + e.by + ")";
+    setActivity("You injected a message; it will reach the table next turn.");
+  } else if (e.type === "stage") { div.textContent = "stage → " + e.to; stageEl.textContent = e.to; setActivity("Stage advanced to " + e.to); }
+  else if (e.type === "seat_change") { div.textContent = "↪ " + e.seat + ": " + e.from + " → " + e.to + " (" + e.reason + ")" + (e.detail ? ": " + e.detail : ""); setActivity(e.seat + " handed off to " + e.to); }
+  else if (e.type === "control") { div.textContent = "• " + e.action + (e.detail? ": "+e.detail : "") + " (" + e.by + ")"; setActivity(e.action + (e.detail ? ": " + e.detail : "")); }
+  else if (e.type === "task_start") { div.textContent = "▶ building task " + e.task + " with " + e.model; setActivity("Workshop building task " + e.task); }
+  else if (e.type === "merge") { div.textContent = "✓ " + e.task + " " + e.result + (e.detail ? ": " + e.detail : ""); setActivity(e.task + " " + e.result); }
   feed.appendChild(div); feed.scrollTop = feed.scrollHeight;
+}
+
+function renderSessions(list) {
+  sessionsEl.innerHTML = "";
+  if (!list.length) {
+    sessionsEl.append(el("div", {className:"emptySide", textContent:"No roundtables yet."}));
+    return;
+  }
+  [...list].reverse().forEach(s => {
+    const b = el("button", {className:"sessionItem" + (s.id===sessionId ? " active" : "")});
+    b.append(el("div", {className:"goal", textContent:s.goal || s.id}));
+    b.append(el("div", {className:"meta", textContent:s.state + " · " + s.stage + " · " + s.turns + " turns"}));
+    b.onclick = () => showLive(s);
+    sessionsEl.append(b);
+  });
+}
+async function refreshSessions() {
+  const body = await (await api("/sessions")).json();
+  renderSessions(body.sessions || []);
+  return body.sessions || [];
 }
 
 async function refreshSeats() {
   if (!sessionId) return;
   const s = await (await api("/sessions/"+sessionId)).json();
+  activeStatus = s;
   stageEl.textContent = s.stage + "  ·  " + s.state;
   if (s.goal) $("goalText").textContent = s.goal;
-  seatsEl.innerHTML = "";
-  for (const [seat, info] of Object.entries(s.seats)) {
-    const d = document.createElement("div");
-    d.className = "seat" + (info.paused? " paused":"");
-    d.innerHTML = '<div class="role" style="color:'+seatColor(seat)+'">'+seat+'</div><div class="model">'+info.model+'</div>';
-    seatsEl.appendChild(d);
-  }
+  renderActivity(s);
+  refreshSessions().catch(()=>{});
 }
 
 function showLive(status) {
   sessionId = status.id;
+  activeStatus = status;
+  activityNote = status.currentTask ? "Building task " + status.currentTask : "Opening roundtable…";
   document.body.dataset.view = "live";
   $("sid").textContent = sessionId;
   $("goalText").textContent = status.goal || "(no goal recorded)";
   stageEl.textContent = status.stage + "  ·  " + status.state;
   feed.innerHTML = "";
+  renderActivity(status);
+  refreshSessions().catch(()=>{});
   refreshSeats();
   if (!showLive._iv) showLive._iv = setInterval(() => { if (sessionId) refreshSeats(); }, 2000);
   if (es) es.close();
@@ -215,8 +303,14 @@ function renderCompose() {
 function showCompose() {
   if (es) { es.close(); es = null; }
   sessionId = null;
+  activeStatus = null;
+  activityNote = "";
+  $("sid").textContent = "—";
+  stageEl.textContent = "new roundtable";
+  $("composeMsg").className = "";
   document.body.dataset.view = "compose";
   renderCompose();
+  refreshSessions().catch(()=>{});
 }
 function showComposeMsg(content, kind) {
   const box = $("composeMsg");
@@ -255,7 +349,6 @@ async function startFusion() {
   const forced = /^\\/goal\\b/i.test(goal);           // "/goal …" skips triage and starts straight away
   if (forced) goal = goal.replace(/^\\/goal\\b\\s*/i, "").trim();
   if (!goal) return;
-  $("goalInput").value = "";                          // clear the box on submit / ⌘+Enter
   const btn = $("startBtn"); const label = btn.textContent; btn.disabled = true; btn.textContent = "…";
   try {
     if (!forced) {
@@ -264,9 +357,14 @@ async function startFusion() {
         const n = el("div"); n.append(el("div", { className:"who", textContent:"Quorum" }), el("div", { textContent: t.reply || "Hi! Tell me what you'd like to build or plan." }));
         showComposeMsg(n, "chat"); return;
       }
+      if (t.intent === "clarify") {
+        const n = el("div"); n.append(el("div", { className:"who", textContent:"Quorum" }), el("div", { textContent: t.reply || "What should the models build or change?" }));
+        showComposeMsg(n, "chat"); $("goalInput").focus(); return;
+      }
       if (t.intent === "meta") { showComposeMsg(settingsHelpNode(), ""); return; }
     }
     $("composeMsg").className = "";
+    $("goalInput").value = "";                          // clear only once a real roundtable starts
     const res = await api("/sessions", "POST", { goal });
     if (!res.ok) throw new Error((await res.json()).error || res.status);
     showLive(await res.json());
@@ -281,7 +379,7 @@ async function startFusion() {
 async function boot() {
   try { await loadSettings(); } catch (e) { settings = { seats:{}, budgets:{}, catalog:{providers:[]} }; }
   let latest = null;
-  try { const list = await (await api("/sessions")).json(); latest = list.sessions[list.sessions.length-1]; } catch (e) {}
+  try { const sessions = await refreshSessions(); latest = sessions[sessions.length-1]; } catch (e) {}
   if (!latest) { showCompose(); return; }
   showLive(latest);
 }
@@ -301,7 +399,7 @@ $("presets").addEventListener("click", async e => {
 });
 $("startBtn").addEventListener("click", startFusion);
 $("goalInput").addEventListener("keydown", e => { if ((e.metaKey||e.ctrlKey) && e.key === "Enter") startFusion(); });
-$("newBtn").addEventListener("click", async () => { await loadSettings(); $("goalInput").value = ""; document.querySelectorAll(".preset").forEach(x=>x.classList.toggle("active", x.dataset.p===preset)); showCompose(); });
+$("newBtn").addEventListener("click", async () => { await loadSettings(); $("goalInput").value = ""; document.querySelectorAll(".preset").forEach(x=>x.classList.toggle("active", x.dataset.p===preset)); showCompose(); $("goalInput").focus(); });
 
 // live inject box
 $("form").addEventListener("submit", async ev => {
@@ -450,7 +548,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
 <title>Quorum</title><style>${STYLE}</style></head>
 <body>
 <header>
-  <h1><span class="dia">◆</span> Quorum</h1>
+  <h1 class="brand">${logoMark("q-logo-header")}<span>Quorum</span></h1>
   <span class="stage" id="stage">…</span>
   <span class="hint">session <span id="sid">—</span></span>
   <span class="spacer"></span>
@@ -470,7 +568,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   </div>
 </div>
 <section id="compose"><div class="composeWrap">
-  <h2><span class="dia">◆</span> Convene the roundtable <span class="tag">beta</span></h2>
+  <h2><span class="heroBrand">${logoMark("q-logo-hero", "qLogo heroLogo")}<span>Convene the roundtable</span></span> <span class="tag">beta</span></h2>
   <p class="subtitle">A <b>quorum</b> of AI models debates your goal and converges on the best answer — brainstorming, planning, and building together.</p>
   <div class="composeCard">
     <div class="presets" id="presets">
@@ -490,7 +588,16 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   </div>
 </div></section>
 <main>
-  <aside id="seats"></aside>
+  <aside>
+    <section class="sideBlock">
+      <h3>Roundtables</h3>
+      <div id="sessions"></div>
+    </section>
+    <section class="sideBlock">
+      <h3>Activity</h3>
+      <div id="activity"></div>
+    </section>
+  </aside>
   <div id="feed"></div>
   <form id="form">
     <input id="msg" placeholder="Say something to the table…  (or /pause, /stop, /status)" autocomplete="off"/>

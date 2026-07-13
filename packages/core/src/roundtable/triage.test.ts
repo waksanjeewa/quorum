@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTriage, quickTriage, triage } from "./triage.js";
+import { isIncompleteGoal, parseTriage, quickTriage, triage } from "./triage.js";
 import type { SeatRunner } from "./engine.js";
 
 describe("quickTriage (instant, no model call)", () => {
@@ -9,8 +9,15 @@ describe("quickTriage (instant, no model call)", () => {
     }
   });
   it("routes obvious build commands straight to build", () => {
-    for (const g of ["build a CLI", "create a script", "fix the login bug", "refactor the parser"]) {
+    for (const g of ["build a CLI", "create a script", "fix the login bug", "refactor the parser", "add a dashboard session list"]) {
       expect(quickTriage(g)?.intent).toBe("build");
+    }
+  });
+  it("asks a follow-up for incomplete or vague goal fragments", () => {
+    for (const g of ["build", "build me a", "fix this", "make app", "add feature", "not working"]) {
+      expect(isIncompleteGoal(g)).toBe(true);
+      expect(quickTriage(g)?.intent).toBe("clarify");
+      expect(quickTriage(g)?.reply).toContain("What should");
     }
   });
   it("returns null for ambiguous input (needs a model)", () => {
@@ -47,6 +54,11 @@ describe("parseTriage", () => {
     expect(parseTriage("META").intent).toBe("meta");
     expect(parseTriage("meta").intent).toBe("meta");
   });
+  it("recognizes a CLARIFY classification and keeps the question", () => {
+    const r = parseTriage("CLARIFY: Which app should I change?");
+    expect(r.intent).toBe("clarify");
+    expect(r.reply).toBe("Which app should I change?");
+  });
 });
 
 describe("triage", () => {
@@ -58,8 +70,10 @@ describe("triage", () => {
     expect(r.intent).toBe("chat");
     expect(r.reply).toBeTruthy();
   });
-  it("defaults to build if the triage model errors (never blocks real work)", async () => {
+  it("asks for clarification if the triage model errors on ambiguous input", async () => {
     const bad: SeatRunner = { id: "m", async takeTurn() { return { status: "error", detail: "x", retryable: false }; } };
-    expect((await triage(bad, "anything")).intent).toBe("build");
+    const r = await triage(bad, "anything");
+    expect(r.intent).toBe("clarify");
+    expect(r.reply).toContain("What should");
   });
 });

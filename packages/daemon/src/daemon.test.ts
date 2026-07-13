@@ -94,6 +94,31 @@ describe("QuorumHttpServer", () => {
     expect(Object.keys(status.seats)).toEqual(["proposer", "critic", "arbiter"]);
   });
 
+  it("lists multiple roundtable sessions for the dashboard sidebar", async () => {
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+
+    const first = await (await api("/sessions", "POST", { goal: "First goal", config: CONFIG })).json();
+    const second = await (await api("/sessions", "POST", { goal: "Second goal", config: CONFIG })).json();
+    const list = await (await api("/sessions")).json();
+
+    expect(list.sessions.map((s: { id: string }) => s.id)).toEqual([first.id, second.id]);
+    expect(list.sessions.map((s: { goal: string }) => s.goal)).toEqual(["First goal", "Second goal"]);
+  });
+
+  it("asks for clarification instead of starting on incomplete compose input", async () => {
+    server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
+    const info = await server.listen();
+    base = info.url;
+    token = info.token;
+
+    const res = await (await api("/triage", "POST", { text: "build" })).json();
+    expect(res.intent).toBe("clarify");
+    expect(res.reply).toContain("What should");
+  });
+
   it("streams events over SSE with replay", async () => {
     server = new QuorumHttpServer({ projectRoot: root, registryFactory: convergingRegistry });
     const info = await server.listen();

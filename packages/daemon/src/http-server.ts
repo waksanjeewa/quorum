@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { parseSessionConfig, quickTriage, triage, type SessionConfig, type TranscriptEvent } from "@quorum/core";
+import { clarificationReply, parseSessionConfig, quickTriage, triage, type SessionConfig, type TranscriptEvent } from "@quorum/core";
 import { Daemon, type DaemonOpts } from "./daemon.js";
 import { buildTriageRunner } from "./registry.js";
 import { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
@@ -178,7 +178,7 @@ export class QuorumHttpServer {
         if (!decision) {
           const config = await loadConfig(this.projectRoot);
           const runner = buildTriageRunner(config, this.daemon.env ? { env: this.daemon.env } : {});
-          decision = runner ? await triage(runner, text) : { intent: "build" };
+          decision = runner ? await triage(runner, text) : { intent: "clarify", reply: clarificationReply };
         }
         return json(res, 200, decision);
       }

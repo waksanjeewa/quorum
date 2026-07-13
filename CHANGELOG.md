@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0
+- **Public-launch polish**: dashboard header/compose now use the real Quorum consensus-table logo,
+  and the CLI launch banner combines that compact mark with the correct ASCII `QUORUM` word.
+- Interactive shell `/` menu now supports terminal-popup discovery with ↑/↓ selection and Enter.
+- Dashboard now has working **New roundtable**, a left-side roundtable list, and active
+  model/activity chips under **Activity**.
+- Vague first messages ask a clarification question instead of starting the wrong goal; `/goal …`
+  still starts directly.
+- Brainstorm turn-budget exhaustion soft-advances toward planning when possible instead of
+  stopping while other models are available.
+- Docs refreshed for the current CLI/dashboard UX and public repository launch.
+
 ## 0.7.0
 - **Publishable**: the CLI now bundles into a single self-contained file (`scripts/bundle-cli.mjs`,
   run on `prepack`), so `npm install -g quorum` works with no workspace packages. The agent SDKs

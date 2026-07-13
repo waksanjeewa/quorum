@@ -61,7 +61,7 @@ async function main(): Promise<void> {
     case "start":
       return start(projectRoot, args.join(" ") || "Untitled goal");
     case "resume":
-      return resume(projectRoot, args[0]);
+      return resumeCommand(projectRoot, args[0]);
     case "status": {
       const client = await requireClient(projectRoot);
       const sessions = await listSessions(client);
@@ -79,7 +79,6 @@ async function main(): Promise<void> {
       return;
     }
     case "pause":
-    case "resume":
     case "stop": {
       const client = await requireClient(projectRoot);
       const s = await control(client, cmd);
@@ -223,6 +222,18 @@ async function resume(projectRoot: string, id?: string): Promise<void> {
   }
   const running = await server.daemon.resumeSession(target);
   await hostSession(server, running, info.url, "resumed");
+}
+
+async function resumeCommand(projectRoot: string, id?: string): Promise<void> {
+  if (id) return resume(projectRoot, id);
+  try {
+    const client = await requireClient(projectRoot);
+    const s = await control(client, "resume");
+    console.log(`resume → ${s.state}`);
+    return;
+  } catch {
+    return resume(projectRoot);
+  }
 }
 
 async function hostSession(server: QuorumHttpServer, running: RunningSession, url: string, verb: string): Promise<void> {

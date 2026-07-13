@@ -223,6 +223,27 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
     await writeFile(path, clean, "utf8");
   };
 
+  const writeBudgetRolloverArtifact = async (stage: Stage, events: TranscriptEvent[]): Promise<void> => {
+    const lastStageIdx = events.reduce((last, e, i) => (e.type === "stage" ? i : last), -1);
+    const turns = events.slice(lastStageIdx + 1).filter((e): e is Extract<TranscriptEvent, { type: "turn" }> => e.type === "turn");
+    const body = [
+      `# ${stage} notes`,
+      "",
+      `Quorum reached the ${stage} turn budget before explicit consensus. These notes were carried forward automatically so the table can keep moving instead of pausing.`,
+      "",
+      ...turns.flatMap((e, i) => [
+        `## ${i + 1}. ${e.seat} (${e.model})${e.move ? ` — ${e.move}` : ""}`,
+        "",
+        e.content.replace(/\n?move\s*:\s*[A-Za-z_]+\s*$/i, "").trim() || "(no content)",
+        "",
+      ]),
+    ].join("\n").trim() + "\n";
+    await writeArtifact(stage, body);
+  };
+
+  const shouldAutoAdvanceTurnBudget = (stage: Stage, next: Stage | undefined): next is Stage =>
+    stage === "brainstorm" && next !== undefined;
+
   // ---- main loop ----
   let startIdx = stages.indexOf(currentStage(await readEvents(dir)));
   if (startIdx < 0) startIdx = 0;
@@ -238,6 +259,15 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
         }
         const events = await readEvents(dir);
         if (turnInStage(events) > config.budgets.maxTurnsPerStage) {
+          const next = stages[idx + 1];
+          if (shouldAutoAdvanceTurnBudget(stage, next)) {
+            await writeBudgetRolloverArtifact(stage, events);
+            note(`auto-advanced ${stage} to ${next}: turn budget reached; carried notes forward`);
+            completed.push(stage);
+            await emit({ ts: ts(), type: "stage", from: stage, to: next, by: "models" });
+            seatCursor = 0;
+            break;
+          }
           await emit({ ts: ts(), type: "control", action: "pause", by: "system", detail: `stage ${stage} hit turn budget` });
           return { converged: false, stagesCompleted: completed, stoppedReason: "budget", notes };
         }
@@ -266,7 +296,10 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
             await emit({ ts: ts(), type: "control", action: "converged", by: "system", detail: stage });
             completed.push(stage);
             const next = stages[idx + 1];
-            if (next) await emit({ ts: ts(), type: "stage", from: stage, to: next, by: "models" });
+            if (next) {
+              await emit({ ts: ts(), type: "stage", from: stage, to: next, by: "models" });
+              seatCursor = 0;
+            }
             break;
           }
         } else if (turn.move === "PROPOSE_STAGE_ADVANCE" && config.stageMode === "models_decide") {
@@ -276,6 +309,7 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
             if (ok) {
               completed.push(stage);
               await emit({ ts: ts(), type: "stage", from: stage, to: next, by: "human" });
+              seatCursor = 0;
               break;
             }
           }
