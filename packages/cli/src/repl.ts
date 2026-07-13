@@ -49,6 +49,17 @@ function answerAboutConfig(config: {
     b.wallClockMax ? `max ${b.wallClockMax}` : "",
   ].filter(Boolean).join(" · ");
   if (budget) lines.push(`    ${C.dim("budgets".padEnd(9))} ${C.dim(budget)}`);
+  // Which providers / logins / API keys the models imply — answers "what API do I have?".
+  const provs = new Set<string>();
+  for (const s of Object.values(config.seats)) {
+    for (const m of s.chain) {
+      if (m === "claude" || m.startsWith("claude/")) provs.add("Claude (login)");
+      else if (m === "codex" || m.startsWith("codex/")) provs.add("Codex (login)");
+      else if (m.startsWith("ollama/")) provs.add("Ollama (local)");
+      else if (m.includes("/")) provs.add(`${m.split("/")[0]} (API key)`);
+    }
+  }
+  if (provs.size) lines.push(`    ${C.dim("apis".padEnd(9))} ${C.dim([...provs].join(" · "))}`);
   const e = config.execution ?? {};
   const swarm = e.parallel === false ? "one at a time" : `swarm${e.maxConcurrency ? ` ×${e.maxConcurrency}` : " (auto)"}`;
   lines.push(`    ${C.dim("agents".padEnd(9))} ${C.dim(`${swarm} · subagents ${e.subagents === false ? "off" : "on"}`)}`);

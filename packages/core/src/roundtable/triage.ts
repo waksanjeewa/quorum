@@ -13,22 +13,23 @@ export interface TriageResult {
 }
 
 const INSTRUCTIONS =
-  "You are Quorum's front desk. The user typed a message. Decide:\n" +
-  "• If it is a concrete task or goal to plan or build (e.g. \"build a CLI\", \"design an API\", " +
-  "\"plan a trip\", \"write a script that…\"), reply with EXACTLY the single word: BUILD\n" +
-  "• Otherwise — a greeting, small talk, a question about Quorum itself (its models, seats, " +
-  "settings, or what it can do), thanks, or something too vague to act on — just reply to the user " +
-  "directly and warmly in 1–3 sentences. If they ask which models/seats/settings are in use, say " +
-  "you'll check the local config (don't guess model ids). " +
-  "Do NOT start planning, do NOT list steps, do NOT mention proposer/critic/arbiter.";
+  "You are Quorum's front desk. The user typed a message. Reply with EXACTLY ONE of:\n" +
+  "• BUILD — ONLY if it is clearly a concrete task or goal to plan or build (e.g. \"build a CLI\", " +
+  "\"design an API for X\", \"plan a trip to Japan\", \"write a script that…\").\n" +
+  "• META — if they are asking about Quorum ITSELF: its models, API keys, providers, logins, seats, " +
+  "settings, agents/subagents, budgets, or what is configured / reachable / logged in. " +
+  "(The app answers META from the local config — you don't need details.)\n" +
+  "• Otherwise, reply directly and warmly in 1–2 sentences: greetings, small talk, thanks, or anything " +
+  "vague. If you are NOT SURE whether it is a real goal to build, do NOT guess BUILD — ask a short " +
+  "clarifying question instead. Never list steps or mention proposer/critic/arbiter.";
 
 const GREETING = /^(hi|hey+|hello|yo|sup|howdy|hiya|hola|thanks|thank you|thx|ty|ok|okay|k|cool|great|nice|awesome|good (morning|afternoon|evening|night)|gm|gn)[\s!.?]*$/i;
 const BUILD_START = /^(build|create|make|write|implement|design|add|fix|refactor|generate|scaffold|develop|set ?up|code|convert|port|migrate|automate)\b/i;
 
 // A question about Quorum's own setup: needs a config subject (models/seats/…) AND a question or
 // possessive context. Kept deterministic so it never reaches a model that would answer confusedly.
-const META_SUBJECT = /\b(models?|seats?|providers?|config(uration)?|settings?|failover|chains?|budgets?|arbiter|proposer|critic|api ?keys?|tokens?|logged ?in|signed ?in|log ?in|at the table|agents?|swarm|subagents?|parallel|concurrency)\b/i;
-const META_CONTEXT = /\b(what|which|who|show|list|tell me|what'?s|whats|my|our|are we|am i|do i|is the|is my|current(ly)?|now|using|use|configured|set ?up|how|why|help|enable|disable|turn (on|off)|working|wrong|not)\b/i;
+const META_SUBJECT = /\b(models?|seats?|providers?|config(uration)?|settings?|failover|chains?|budgets?|arbiter|proposer|critic|apis?|api ?keys?|keys?|tokens?|logged ?in|signed ?in|log ?in|at the table|agents?|swarm|subagents?|parallel|concurrency|openrouter|ollama|gemini|groq|together|fireworks|deepinfra|copilot|github|anthropic|openai|claude|codex)\b/i;
+const META_CONTEXT = /\b(what|which|who|show|list|tell me|what'?s|whats|my|our|are we|am i|do i|is the|is my|current(ly)?|now|using|use|configured|set ?up|how|why|help|enable|disable|turn (on|off)|working|wrong|not|have|got)\b/i;
 
 /** True for "what models are we using?", "show my config", "which seats?", etc. */
 export function isMetaQuestion(input: string): boolean {
@@ -52,10 +53,11 @@ export function quickTriage(input: string): TriageResult | null {
   return null;
 }
 
-/** Parse a triage response: exactly "BUILD" → build; anything else → a chat reply. */
+/** Parse a triage response: "BUILD" → build; "META" → config question; anything else → a chat reply. */
 export function parseTriage(content: string): TriageResult {
   const t = content.trim();
   if (/^build\b/i.test(t) && t.length <= 12) return { intent: "build" };
+  if (/^meta\b/i.test(t) && t.length <= 12) return { intent: "meta" };
   return { intent: "chat", reply: t || "Hi! Tell me what you'd like to build or plan." };
 }
 

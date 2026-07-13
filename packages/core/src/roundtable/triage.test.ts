@@ -18,7 +18,7 @@ describe("quickTriage (instant, no model call)", () => {
     expect(quickTriage("the tests are flaky")).toBeNull();
   });
   it("flags questions about Quorum's own config as meta (answered from local state)", () => {
-    for (const q of ["what models are we using now?", "which models are configured?", "show my config", "what are my seats?", "what settings do we have", "am I logged in?"]) {
+    for (const q of ["what models are we using now?", "which models are configured?", "show my config", "what are my seats?", "what settings do we have", "am I logged in?", "what API do I have?", "is my openrouter key set up?"]) {
       expect(quickTriage(q)?.intent).toBe("meta");
     }
   });
@@ -42,6 +42,10 @@ describe("parseTriage", () => {
   });
   it("does not mistake a chat reply that merely starts with 'build' for a build goal", () => {
     expect(parseTriage("Building things is my specialty — what do you have in mind?").intent).toBe("chat");
+  });
+  it("recognizes a META classification (a question about Quorum's setup)", () => {
+    expect(parseTriage("META").intent).toBe("meta");
+    expect(parseTriage("meta").intent).toBe("meta");
   });
 });
 

@@ -232,6 +232,14 @@ function settingsHelpNode() {
     const rest = s.chain.length > 1 ? "  → " + s.chain.slice(1).join(" → ") : "";
     wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent: seat }), el("span", { textContent: (s.chain[0] || "account default") + rest })));
   }
+  const provs = new Set();
+  for (const s of Object.values(seats)) for (const m of s.chain) {
+    if (m === "claude" || m.startsWith("claude/")) provs.add("Claude (login)");
+    else if (m === "codex" || m.startsWith("codex/")) provs.add("Codex (login)");
+    else if (m.startsWith("ollama/")) provs.add("Ollama (local)");
+    else if (m.includes("/")) provs.add(m.split("/")[0] + " (API key)");
+  }
+  if (provs.size) wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent:"apis" }), el("span", { textContent: [...provs].join(" · ") })));
   const e = (settings && settings.execution) || {};
   const agents = (e.parallel === false ? "one at a time" : "swarm" + (e.maxConcurrency ? " ×" + e.maxConcurrency : " (auto)")) + " · subagents " + (e.subagents === false ? "off" : "on");
   wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent:"agents" }), el("span", { textContent: agents })));
@@ -247,6 +255,7 @@ async function startFusion() {
   const forced = /^\\/goal\\b/i.test(goal);           // "/goal …" skips triage and starts straight away
   if (forced) goal = goal.replace(/^\\/goal\\b\\s*/i, "").trim();
   if (!goal) return;
+  $("goalInput").value = "";                          // clear the box on submit / ⌘+Enter
   const btn = $("startBtn"); const label = btn.textContent; btn.disabled = true; btn.textContent = "…";
   try {
     if (!forced) {
