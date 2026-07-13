@@ -7,7 +7,10 @@ packages needed by consumers. This is the checklist to make it installable by th
 
 - [ ] `corepack pnpm build && corepack pnpm lint && corepack pnpm test` green
 - [ ] Run a redacted secret scan before changing repository visibility
+- [ ] Scan tracked files for local home-directory paths, `.quorum` session artifacts, `daemon.json`,
+      `.env`, private keys, PEMs, and remove anything personal
 - [ ] Confirm public-facing docs and brand assets use the Quorum palette only (no purple/violet/magenta/indigo)
+- [ ] Smoke-check the installer syntax with `bash -n install.sh`
 - [ ] Bump the version in `packages/cli/package.json` when publishing a new npm package (+ add a `CHANGELOG.md` entry)
 - [ ] Verify the bundle is self-contained:
   ```bash

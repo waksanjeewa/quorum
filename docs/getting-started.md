@@ -6,8 +6,10 @@ Quorum is local-first: everything runs on your machine, your credentials never l
 
 | Requirement | Why | Install |
 |---|---|---|
-| **Node.js ≥ 20** | Quorum runs on Node | [nodejs.org](https://nodejs.org) or `brew install node` |
-| **git** | required for autonomous *building* (isolated worktrees + merges) | `xcode-select --install` (macOS) or `brew install git` |
+| **Node.js ≥ 20** + npm | Quorum runs on Node and builds the CLI bundle | the installer tries Homebrew/apt/dnf/yum/pacman/apk first |
+| **git** | required for autonomous *building* (isolated worktrees + merges) | installed by the source installer when possible |
+| **Python 3** | common project/acceptance-test runtime for generated code | installed by the source installer when possible |
+| **Linux `secret-tool`** | optional secure API-key storage on Linux | installed as `libsecret-tools`/`libsecret` when possible |
 | At least **one model** (below) | someone has to sit at the table | — |
 
 **Models — bring any of these (mix freely):**
@@ -30,6 +32,14 @@ Quorum is local-first: everything runs on your machine, your credentials never l
 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
 ```
 (or `git clone https://github.com/waksanjeewa/quorum && cd quorum && ./install.sh`)
+
+The installer bootstraps the local toolchain where it can: Node.js ≥20, npm, git, Python 3,
+pnpm/Corepack, and Linux Keychain support (`secret-tool`). If you prefer to install system packages
+yourself first, opt out of package-manager changes:
+
+```bash
+QUORUM_SKIP_SYSTEM_DEPS=1 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+```
 
 Then check your machine:
 

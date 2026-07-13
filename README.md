@@ -83,6 +83,14 @@ curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh 
 # or: git clone https://github.com/waksanjeewa/quorum && cd quorum && ./install.sh
 ```
 
+The installer checks and, where possible, installs the local prerequisites with your system package
+manager: Node.js ≥20, npm, git, Python 3, pnpm/Corepack, and Linux `secret-tool` for secure API-key
+storage. To only check prerequisites and skip system package installs, run:
+
+```bash
+QUORUM_SKIP_SYSTEM_DEPS=1 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+```
+
 *(An npm one-liner is coming. Note: the bare name `quorum` is already taken on npm, so the published
 package will be scoped — likely `npm install -g @waksanjeewa/quorum`.)*
 
