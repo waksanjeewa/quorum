@@ -391,17 +391,22 @@ export async function repl(projectRoot: string): Promise<void> {
       });
   });
 
-  // Type "/" on an empty line → pop the command menu (like Claude Code). Interactive terminals only.
+  // Type "/" (as the whole line) → show the command menu ONCE, until the line is cleared/submitted.
+  // Interactive terminals only. Guarded hard so it can't repeat on every keystroke.
   if (process.stdin.isTTY) {
-    let lastLine = "";
-    process.stdin.on("keypress", () => {
-      setImmediate(() => {
-        if (closed) return;
-        const line = (rl as unknown as { line?: string }).line ?? "";
-        if (!busy && line === "/" && lastLine !== "/") showSlashMenu();
-        lastLine = line;
-      });
-    });
+    let shownForLine = false;
+    let lastMenuAt = 0;
+    const maybeMenu = (): void => {
+      if (closed || busy) return;
+      const line = (rl as unknown as { line?: string }).line ?? "";
+      if (line.length === 0) shownForLine = false; // reset once the line is empty (incl. after Enter)
+      if (line !== "/" || shownForLine) return;
+      if (Date.now() - lastMenuAt < 400) return; // debounce any keypress burst
+      shownForLine = true;
+      lastMenuAt = Date.now();
+      showSlashMenu();
+    };
+    process.stdin.on("keypress", () => setImmediate(maybeMenu));
   }
 
   rl.on("SIGINT", () => {
