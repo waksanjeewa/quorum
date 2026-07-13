@@ -3,8 +3,9 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile, rm, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { parseSessionConfig, type SessionConfig, type TranscriptEvent } from "@quorum/core";
+import { parseSessionConfig, quickTriage, triage, type SessionConfig, type TranscriptEvent } from "@quorum/core";
 import { Daemon, type DaemonOpts } from "./daemon.js";
+import { buildTriageRunner } from "./registry.js";
 import { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
 import { doctorReport } from "./doctor.js";
 import { setSecret, getSecret, deleteSecret, keychainAvailable } from "./secrets.js";
@@ -165,6 +166,21 @@ export class QuorumHttpServer {
         await deleteSecret(env);
         this.daemon.setEnvVar(env, undefined);
         return json(res, 200, { ok: true, note: "Signed out — key removed." });
+      }
+
+      // POST /triage { text } — classify a compose-box message before starting a run, so a greeting
+      // or a settings question doesn't convene the whole roundtable. Mirrors the CLI's triage.
+      if (parts[0] === "triage" && req.method === "POST") {
+        const body = await readJson(req);
+        const text = String(body.text ?? "").trim();
+        if (!text) return json(res, 200, { intent: "chat", reply: "Tell me what you'd like to build or plan." });
+        let decision = quickTriage(text);
+        if (!decision) {
+          const config = await loadConfig(this.projectRoot);
+          const runner = buildTriageRunner(config, this.daemon.env ? { env: this.daemon.env } : {});
+          decision = runner ? await triage(runner, text) : { intent: "build" };
+        }
+        return json(res, 200, decision);
       }
 
       // /sessions ...

@@ -102,6 +102,11 @@ export class Daemon {
     this.opts.env[name] = value;
   }
 
+  /** Current resolved env (API keys), for building ad-hoc runners like triage. */
+  get env(): Record<string, string | undefined> | undefined {
+    return this.opts.env;
+  }
+
   get(id: string): RunningSession | undefined {
     return this.sessions.get(id);
   }

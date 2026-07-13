@@ -4,18 +4,26 @@
 // VS Code webview.
 
 const STYLE = `
-:root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --card:#f9fafb; --accent:#2563eb; --stop:#dc2626; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e5e7eb; --muted:#9aa4b2; --line:#252a33; --card:#161a21; --accent:#60a5fa; --stop:#f87171; } }
+:root { color-scheme: light dark;
+  --bg:#f7faf9; --fg:#0b1210; --muted:#5b6b68; --line:#e0e9e6; --card:#ffffff;
+  --accent:#0EA5A4; --accent2:#0891b2; --amber:#b45309; --stop:#dc2626; --ontint:#04120e;
+  --grad:linear-gradient(135deg,#10B981,#0EA5A4 55%,#22D3EE); }
+@media (prefers-color-scheme: dark) { :root {
+  --bg:#0A0F12; --fg:#E6F1EE; --muted:#8FA3A0; --line:#20312f; --card:#101719;
+  --accent:#10B981; --accent2:#22D3EE; --amber:#F59E0B; --stop:#f87171; --ontint:#04120e;
+  --grad:linear-gradient(135deg,#10B981,#0EA5A4 55%,#22D3EE); } }
 * { box-sizing: border-box; }
 body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--bg); flex-wrap:wrap; flex:none; }
 h1 { font-size:15px; margin:0; font-weight:700; }
+.dia { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 .stage { font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
 .spacer { flex:1; }
 button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; padding:6px 12px; cursor:pointer; }
 button:hover { border-color:var(--accent); }
 button.stop { background:var(--stop); color:#fff; border-color:var(--stop); font-weight:600; }
-button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+button.primary { background:var(--grad); color:var(--ontint); border:none; font-weight:700; }
+button.primary:hover { filter:brightness(1.08); }
 
 /* ── Goal bar (live view) ─────────────────────────────────────────── */
 .goalbar { display:none; align-items:flex-start; gap:10px; padding:9px 16px; border-bottom:1px solid var(--line); background:var(--card); flex:none; }
@@ -24,24 +32,31 @@ body[data-view="live"] .goalbar { display:flex; }
 .goalbar .g { font-weight:600; white-space:pre-wrap; word-break:break-word; }
 
 /* ── Compose / landing (no active session) ───────────────────────── */
-#compose { display:none; flex:1; overflow:auto; }
+#compose { display:none; flex:1; overflow:auto; background:radial-gradient(60% 45% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent); }
 body[data-view="compose"] #compose { display:block; }
 main { display:none; flex:1; min-height:0; grid-template-columns:220px 1fr; grid-template-rows:1fr auto; }
 body[data-view="live"] main { display:grid; }
-.composeWrap { max-width:760px; margin:0 auto; padding:40px 20px; }
-.composeWrap h2 { text-align:center; font-size:26px; margin:0 0 6px; }
-.composeWrap .tag { display:inline-block; font-size:11px; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:1px 8px; vertical-align:middle; margin-left:8px; }
-.composeWrap .subtitle { text-align:center; color:var(--muted); margin:0 0 22px; }
-.composeCard { border:1px solid var(--line); border-radius:16px; background:var(--card); padding:16px; }
+.composeWrap { max-width:760px; margin:0 auto; padding:44px 20px; }
+.composeWrap h2 { text-align:center; font-size:28px; margin:0 0 6px; letter-spacing:-.01em; }
+.composeWrap h2 .dia { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.composeWrap .tag { display:inline-block; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:1px 8px; vertical-align:middle; margin-left:8px; }
+.composeWrap .subtitle { text-align:center; color:var(--muted); margin:0 auto 22px; max-width:560px; }
+.composeCard { border:1px solid var(--line); border-radius:16px; background:var(--card); padding:18px; box-shadow:0 18px 50px -28px color-mix(in srgb, var(--accent) 70%, transparent); }
 .presets { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
 .preset { border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:6px 16px; cursor:pointer; font-size:13px; }
-.preset.active { background:var(--fg); color:var(--bg); border-color:var(--fg); font-weight:600; }
+.preset.active { background:var(--grad); color:var(--ontint); border-color:transparent; font-weight:700; }
+#composeMsg { display:none; margin-top:14px; padding:12px 14px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px; background:var(--bg); font-size:13px; }
+#composeMsg.show { display:block; }
+#composeMsg.err { border-left-color:var(--stop); color:var(--stop); }
+#composeMsg .who { font-weight:700; color:var(--accent); margin-bottom:4px; }
+#composeMsg .srow { display:flex; gap:8px; margin:2px 0; }
+#composeMsg .srole { color:var(--muted); text-transform:capitalize; min-width:70px; }
 .mchips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
 .mchip { display:flex; gap:6px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; background:var(--bg); }
 .mchip .role { color:var(--muted); text-transform:capitalize; }
 .mchip .badge { font-size:9px; padding:1px 5px; border-radius:4px; border:1px solid #16a34a; color:#16a34a; }
 .fuse { font-size:12px; color:var(--muted); margin-bottom:12px; }
-.fuse b { color:var(--fg); }
+.fuse b { color:var(--amber); }
 #goalInput { width:100%; min-height:130px; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--bg); color:var(--fg); resize:vertical; }
 .composeRow { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px; }
 .composeRow .start { padding:9px 20px; font-size:14px; }
@@ -193,7 +208,7 @@ function renderCompose() {
   }
   chips.append(el("button", {textContent:"⚙ change models", onclick: openSettings}));
   const arb = seats.arbiter && seats.arbiter.chain[0];
-  $("fuse").innerHTML = "Fuse with <b>" + (arb || "arbiter") + "</b> — the arbiter weighs the debate and converges it into one answer.";
+  $("fuse").innerHTML = "Converged by <b>" + (arb || "arbiter") + "</b> — the arbiter weighs the debate and calls the result.";
   const canBuild = Object.values(seats).some(s => s.chain.some(isExecId));
   $("composeHint").textContent = canBuild ? "Plans and builds — Claude/Codex present." : "Plans only — add Claude or Codex in Settings to build.";
 }
@@ -203,14 +218,54 @@ function showCompose() {
   document.body.dataset.view = "compose";
   renderCompose();
 }
+function showComposeMsg(content, kind) {
+  const box = $("composeMsg");
+  box.innerHTML = ""; box.className = "show" + (kind ? " " + kind : "");
+  if (typeof content === "string") box.textContent = content; else box.append(content);
+}
+// A support answer built from local settings — shown when the user asks about the setup.
+function settingsHelpNode() {
+  const wrap = el("div");
+  wrap.append(el("div", { className:"who", textContent:"Your setup" }));
+  const seats = (settings && settings.seats) || {};
+  for (const [seat, s] of Object.entries(seats)) {
+    const rest = s.chain.length > 1 ? "  → " + s.chain.slice(1).join(" → ") : "";
+    wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent: seat }), el("span", { textContent: (s.chain[0] || "account default") + rest })));
+  }
+  const e = (settings && settings.execution) || {};
+  const agents = (e.parallel === false ? "one at a time" : "swarm" + (e.maxConcurrency ? " ×" + e.maxConcurrency : " (auto)")) + " · subagents " + (e.subagents === false ? "off" : "on");
+  wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent:"agents" }), el("span", { textContent: agents })));
+  const p = el("div", { style:"margin-top:8px" });
+  p.append(document.createTextNode("Add a model, paste an API key, toggle agents, or check what's reachable in "));
+  const b = el("button", { textContent:"⚙ Settings" }); b.onclick = openSettings; b.style.padding = "2px 8px";
+  p.append(b);
+  wrap.append(p);
+  return wrap;
+}
 async function startFusion() {
-  const goal = $("goalInput").value.trim(); if (!goal) return;
-  const btn = $("startBtn"); btn.disabled = true; btn.textContent = "Starting…";
+  let goal = $("goalInput").value.trim(); if (!goal) return;
+  const forced = /^\\/goal\\b/i.test(goal);           // "/goal …" skips triage and starts straight away
+  if (forced) goal = goal.replace(/^\\/goal\\b\\s*/i, "").trim();
+  if (!goal) return;
+  const btn = $("startBtn"); const label = btn.textContent; btn.disabled = true; btn.textContent = "…";
   try {
+    if (!forced) {
+      const t = await (await api("/triage", "POST", { text: goal })).json();
+      if (t.intent === "chat") {
+        const n = el("div"); n.append(el("div", { className:"who", textContent:"Quorum" }), el("div", { textContent: t.reply || "Hi! Tell me what you'd like to build or plan." }));
+        showComposeMsg(n, "chat"); return;
+      }
+      if (t.intent === "meta") { showComposeMsg(settingsHelpNode(), ""); return; }
+    }
+    $("composeMsg").className = "";
     const res = await api("/sessions", "POST", { goal });
     if (!res.ok) throw new Error((await res.json()).error || res.status);
     showLive(await res.json());
-  } catch (err) { btn.disabled = false; btn.textContent = "Start ▸"; alert("Could not start: " + err); }
+  } catch (err) {
+    showComposeMsg("Couldn't start: " + err, "err");
+  } finally {
+    btn.disabled = false; btn.textContent = label;
+  }
 }
 
 // ── Boot ────────────────────────────────────────────────────────────
@@ -386,11 +441,11 @@ export function renderDashboard(token: string, baseUrl = ""): string {
 <title>Quorum</title><style>${STYLE}</style></head>
 <body>
 <header>
-  <h1>Quorum</h1>
+  <h1><span class="dia">◆</span> Quorum</h1>
   <span class="stage" id="stage">…</span>
   <span class="hint">session <span id="sid">—</span></span>
   <span class="spacer"></span>
-  <button id="newBtn">＋ New fusion</button>
+  <button id="newBtn">＋ New roundtable</button>
   <button id="settings">⚙ Settings</button>
   <button class="liveonly" id="pause">Pause</button>
   <button class="liveonly" id="resume">Resume</button>
@@ -406,8 +461,8 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   </div>
 </div>
 <section id="compose"><div class="composeWrap">
-  <h2>Model Fusion <span class="tag">beta</span></h2>
-  <p class="subtitle">Run multiple models together on one goal — they debate, then converge into the best result.</p>
+  <h2><span class="dia">◆</span> Convene the roundtable <span class="tag">beta</span></h2>
+  <p class="subtitle">A <b>quorum</b> of AI models debates your goal and converges on the best answer — brainstorming, planning, and building together.</p>
   <div class="composeCard">
     <div class="presets" id="presets">
       <button class="preset active" data-p="Quality">Quality</button>
@@ -417,11 +472,12 @@ export function renderDashboard(token: string, baseUrl = ""): string {
     </div>
     <div class="mchips" id="mchips"></div>
     <div class="fuse" id="fuse"></div>
-    <textarea id="goalInput" placeholder="Describe your goal — what should the models build or figure out?  (⌘/Ctrl+Enter to start)"></textarea>
+    <textarea id="goalInput" placeholder="Describe your goal — what should the models figure out or build?  (⌘/Ctrl+Enter · say hi to chat · /goal … to start straight away)"></textarea>
     <div class="composeRow">
       <span class="hint" id="composeHint"></span>
-      <button class="primary start" id="startBtn">Start ▸</button>
+      <button class="primary start" id="startBtn">Convene ▸</button>
     </div>
+    <div id="composeMsg"></div>
   </div>
 </div></section>
 <main>

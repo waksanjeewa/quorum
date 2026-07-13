@@ -11,6 +11,7 @@ import { C, PROMPT, quorumLogo } from "./theme.js";
 import type { RunningSession } from "@quorum/daemon";
 
 const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
+  ${C.brand("/goal")} ${C.dim("<text>")}    start building this goal directly (skip the chat/greeting check)
   ${C.brand("/models")}          pick your models — login or paste an API key
   ${C.brand("/dashboard")}       open the live web dashboard (watch · inject · settings · STOP)
   ${C.brand("/doctor")}          check which model seats are ready
@@ -143,7 +144,7 @@ export async function repl(projectRoot: string): Promise<void> {
   }
   rl.prompt();
 
-  const startGoal = async (goal: string): Promise<void> => {
+  const startGoal = async (goal: string, force = false): Promise<void> => {
     // Gate input + show a live spinner while we work out what to do and spin up the table. New
     // keystrokes are paused (buffered by the terminal) until this clears, so goals can't collide.
     busy = true;
@@ -155,7 +156,8 @@ export async function repl(projectRoot: string): Promise<void> {
 
       // Triage: don't convene a roundtable for a greeting / small talk / a quick question.
       // Obvious cases are instant (no model call); only ambiguous input costs a model turn.
-      let decision = quickTriage(goal);
+      // `force` (from /goal) skips triage entirely and goes straight to building.
+      let decision: { intent: "chat" | "build" | "meta"; reply?: string } | null = force ? { intent: "build" } : quickTriage(goal);
       if (!decision) {
         const triageRunner = buildTriageRunner(config, { env });
         if (triageRunner) {
@@ -219,6 +221,12 @@ export async function repl(projectRoot: string): Promise<void> {
     if (text.startsWith("/")) {
       const [cmd, ...rest] = text.slice(1).split(/\s+/);
       switch (cmd) {
+        case "goal": {
+          const g = rest.join(" ").trim();
+          if (!g) return void console.log("  Usage: /goal <what to build>  (skips the chat/greeting check)");
+          await startGoal(g, true);
+          return;
+        }
         case "models":
         case "setup":
           rl.pause();
