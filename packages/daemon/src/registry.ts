@@ -70,10 +70,11 @@ export function buildAdapterRegistry(config: SessionConfig, opts: BuildRegistryO
  */
 export function buildExecutorFactory(config: SessionConfig): (worktreePath: string, attempt: number) => SeatRunner | null {
   const ids = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter(isExecutorModel);
+  const subagents = config.execution?.subagents ?? true;
   return (worktreePath, attempt) => {
     const id = ids[attempt];
     if (!id) return null;
-    const execute = { workingDirectory: worktreePath };
+    const execute = { workingDirectory: worktreePath, subagents };
     if (id === "claude") return createClaudeAdapter({ execute });
     if (id.startsWith("claude/")) return createClaudeAdapter({ model: id.slice("claude/".length), execute });
     if (id === "codex") return createCodexAdapter({ execute });

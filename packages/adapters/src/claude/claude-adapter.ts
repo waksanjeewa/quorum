@@ -24,7 +24,12 @@ export function claudeQueryOptions(
     ...(sessionId ? { resume: sessionId } : {}),
     ...(model ? { model } : {}),
     ...(execute
-      ? { allowedTools: ["Read", "Write", "Edit", "Bash"], cwd: execute.workingDirectory, permissionMode: "acceptEdits" }
+      ? {
+          // subagents ⇒ the Task tool, so the executor can fan out to its own agent swarm when useful.
+          allowedTools: execute.subagents ? ["Read", "Write", "Edit", "Bash", "Task"] : ["Read", "Write", "Edit", "Bash"],
+          cwd: execute.workingDirectory,
+          permissionMode: "acceptEdits",
+        }
       : { allowedTools: [] }), // deliberation: no tools
   };
 }

@@ -92,6 +92,27 @@ Notes:
 Plus always-on rails: STOP kills everything instantly; building happens in isolated git worktrees;
 nothing merges until the task's acceptance commands pass; Quorum never pushes or deploys.
 
+## Agents & execution (the swarm)
+
+When building, Quorum runs an **agent swarm** — independent tasks execute in parallel, each in its own
+worktree — and executor agents (Claude) can spawn **subagents** (the Task tool) when they judge a task
+warrants fanning out. Both are toggleable in the dashboard **⚙ Settings → Agents & execution**, or in
+config:
+
+```yaml
+execution:
+  parallel: true        # run independent tasks at once (a swarm); false ⇒ one at a time
+  max_concurrency: 4    # cap on concurrent agents; omit for auto (min(4, cores-1))
+  subagents: true       # let Claude executors spawn subagents (Task tool) when useful
+```
+
+- **parallel / max_concurrency** control the swarm width. The models don't need to ask — the planner
+  decomposes the goal into tasks with dependencies, and any that are independent run concurrently
+  (up to the cap). Set `parallel: false` for strictly sequential, easier-to-follow runs.
+- **subagents** grants the Claude executor the Task tool, so *it* decides when to delegate to a
+  subagent (e.g. a big task with separable parts). Turn it off to keep each task a single agent.
+  (Codex executes as a single agent; the subagent toggle applies to Claude executors.)
+
 ## Hermes, gateways, and other platforms
 
 - **Nous Hermes** (and hundreds of others) work today via OpenRouter:

@@ -175,6 +175,19 @@ GitHub login alongside any free model. Example: `github/gpt-4o-mini`.
 > worktree. An `openrouter/anthropic/claude-…` is chat-only and can't drive the build loop. In setup,
 > pick an aggregator and Quorum offers to auto-spread its models across the three seats for you.
 
+### Agents & execution (the swarm)
+
+When building, independent tasks run as a **parallel swarm** of executor agents, and Claude executors
+can spawn **subagents** (the Task tool) when a task warrants it. Toggle both in the dashboard
+**⚙ Settings → Agents & execution**, or in config:
+
+```yaml
+execution:
+  parallel: true        # run independent tasks at once; false ⇒ one at a time
+  max_concurrency: 4    # cap; omit for auto
+  subagents: true       # let Claude executors spawn subagents when useful
+```
+
 ## Architecture
 
 A TypeScript / pnpm monorepo (`core ← adapters ← daemon ← cli`; the dashboard is served over HTTP):

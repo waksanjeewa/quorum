@@ -29,6 +29,7 @@ export interface StructuredConfig {
   seats: Record<string, { chain: string[] }>;
   budgets?: { maxTurnsPerStage?: number; maxCostUsd?: number; wallClockMax?: string };
   providers?: Record<string, { baseUrl: string; keyEnv: string }>;
+  execution?: { parallel?: boolean; maxConcurrency?: number; subagents?: boolean };
 }
 
 /** Serialize a structured config from the dashboard into .quorum/config.yaml text. */
@@ -50,6 +51,13 @@ export function configToYaml(cfg: StructuredConfig): string {
   lines.push("budgets:", `  max_turns_per_stage: ${b.maxTurnsPerStage ?? 12}`);
   if (b.maxCostUsd != null) lines.push(`  max_cost_usd: ${b.maxCostUsd}`);
   if (b.wallClockMax) lines.push(`  wall_clock_max: ${b.wallClockMax}`);
+  const e = cfg.execution;
+  if (e && (e.parallel !== undefined || e.subagents !== undefined || e.maxConcurrency !== undefined)) {
+    lines.push("execution:");
+    if (e.parallel !== undefined) lines.push(`  parallel: ${e.parallel}`);
+    if (e.maxConcurrency !== undefined) lines.push(`  max_concurrency: ${e.maxConcurrency}`);
+    if (e.subagents !== undefined) lines.push(`  subagents: ${e.subagents}`);
+  }
   if (Object.keys(providers).length > 0) {
     lines.push("providers:");
     for (const [name, p] of Object.entries(providers)) {

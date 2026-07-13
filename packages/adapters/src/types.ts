@@ -17,6 +17,8 @@ export interface Capabilities {
 /** Enables execute mode on an SDK adapter: tools on, write sandbox, cwd = the task's worktree. */
 export interface ExecuteConfig {
   workingDirectory: string;
+  /** Allow the executor agent to spawn subagents (Claude's Task tool). Default off. */
+  subagents?: boolean;
 }
 
 export interface QuotaHint {

@@ -232,7 +232,7 @@ $("presets").addEventListener("click", async e => {
   for (const s of Object.values(settings.seats)) {
     s.chain = s.chain.map((id,i)=>({id,i})).sort((a,b)=> tierScore(a.id,p)-tierScore(b.id,p) || a.i-b.i).map(x=>x.id);
   }
-  await api("/settings","PUT",{ seats:settings.seats, budgets:settings.budgets, providers:settings.providers });
+  await api("/settings","PUT",{ seats:settings.seats, budgets:settings.budgets, providers:settings.providers, execution:settings.execution });
   renderCompose();
 });
 $("startBtn").addEventListener("click", startFusion);
@@ -328,6 +328,24 @@ function renderSettings() {
   cost.onchange=()=>{ S.budgets.maxCostUsd = cost.value===""?undefined:Number(cost.value); };
   brow.append(el("span",{className:"name", textContent:"max turns / stage"}), turns, el("span",{className:"name", textContent:"max cost (USD)"}), cost);
   bsec.append(brow); sbody.append(bsec);
+
+  // Agents & execution — the "swarm": parallel executor agents + subagents (Claude Task tool).
+  S.execution = S.execution || { parallel:true, subagents:true };
+  const toggle = (checked, on) => { const c = el("input",{type:"checkbox"}); c.checked = checked; c.style.flex="none"; c.style.width="16px"; c.style.height="16px"; c.onchange=()=>on(c.checked); return c; };
+  const asec = el("div",{className:"section"});
+  asec.append(el("h3",{textContent:"Agents & execution"}));
+  const r1 = el("div",{className:"keyRow"});
+  r1.append(el("span",{className:"name", textContent:"Parallel agents (swarm)"}), toggle(S.execution.parallel!==false, v=>S.execution.parallel=v), el("span",{className:"hint", textContent:"build independent tasks at once"}));
+  asec.append(r1);
+  const r2 = el("div",{className:"keyRow"});
+  const conc = el("input",{type:"number", placeholder:"auto"}); conc.value=S.execution.maxConcurrency??""; conc.style.maxWidth="80px";
+  conc.onchange=()=>{ S.execution.maxConcurrency = conc.value===""?undefined:Number(conc.value); };
+  r2.append(el("span",{className:"name", textContent:"Max concurrent agents"}), conc, el("span",{className:"hint", textContent:"blank = auto"}));
+  asec.append(r2);
+  const r3 = el("div",{className:"keyRow"});
+  r3.append(el("span",{className:"name", textContent:"Subagents"}), toggle(S.execution.subagents!==false, v=>S.execution.subagents=v), el("span",{className:"hint", textContent:"let Claude executors spawn subagents (Task tool) when useful"}));
+  asec.append(r3);
+  sbody.append(asec);
 }
 
 async function openSettings() {
@@ -340,7 +358,7 @@ $("settings").addEventListener("click", openSettings);
 $("cfgClose").addEventListener("click", () => panel.classList.remove("open"));
 $("cfgSave").addEventListener("click", async () => {
   if(!S) return;
-  const res = await api("/settings","PUT",{ seats:S.seats, budgets:S.budgets, providers:S.providers });
+  const res = await api("/settings","PUT",{ seats:S.seats, budgets:S.budgets, providers:S.providers, execution:S.execution });
   const b = await res.json();
   cfgMsg.textContent = res.ok ? (b.note||"Saved.") : (b.error||"Invalid");
   cfgMsg.className = "msg "+(res.ok?"ok":"err");

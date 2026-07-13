@@ -138,6 +138,9 @@ export class RunningSession {
         await decomposePlan({ session: this.session, planner, now: this.now, signal: this.abort.signal, onEvent: (e) => this.onEngineEvent(e) });
       }
       if (this.executorFactory && this.projectRoot) {
+        // Swarm control: parallel off ⇒ one agent at a time; else the user's cap (or scheduler auto).
+        const exec = this.session.config.execution;
+        const maxConcurrency = exec && !exec.parallel ? 1 : exec?.maxConcurrency;
         await runExecuteStage({
           session: this.session,
           projectRoot: this.projectRoot,
@@ -146,6 +149,7 @@ export class RunningSession {
           now: this.now,
           signal: this.abort.signal,
           onEvent: (e) => this.onEngineEvent(e),
+          ...(maxConcurrency !== undefined ? { maxConcurrency } : {}),
         });
       }
     }

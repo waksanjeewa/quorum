@@ -128,6 +128,7 @@ export class QuorumHttpServer {
           seats: Object.fromEntries(Object.entries(config.seats).map(([n, s]) => [n, { chain: s.chain }])),
           budgets: config.budgets,
           providers: config.providers,
+          execution: config.execution ?? { parallel: true, subagents: true },
           doctor,
           catalog: MODEL_CATALOG,
           keychainAvailable: keychainAvailable(),

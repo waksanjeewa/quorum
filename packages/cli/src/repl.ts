@@ -34,6 +34,7 @@ const prettyModel = (m: string): string => (m === "claude" || m === "codex" ? `$
 function answerAboutConfig(config: {
   seats: Record<string, { chain: string[] }>;
   budgets?: { maxTurnsPerStage?: number; maxCostUsd?: number; wallClockMax?: string };
+  execution?: { parallel?: boolean; maxConcurrency?: number; subagents?: boolean };
 }): string {
   const lines: string[] = [`  ${C.bold("Here's your table right now")} ${C.dim("(from .quorum/config.yaml):")}`];
   for (const [seat, s] of Object.entries(config.seats)) {
@@ -47,9 +48,14 @@ function answerAboutConfig(config: {
     b.wallClockMax ? `max ${b.wallClockMax}` : "",
   ].filter(Boolean).join(" · ");
   if (budget) lines.push(`    ${C.dim("budgets".padEnd(9))} ${C.dim(budget)}`);
+  const e = config.execution ?? {};
+  const swarm = e.parallel === false ? "one at a time" : `swarm${e.maxConcurrency ? ` ×${e.maxConcurrency}` : " (auto)"}`;
+  lines.push(`    ${C.dim("agents".padEnd(9))} ${C.dim(`${swarm} · subagents ${e.subagents === false ? "off" : "on"}`)}`);
   const unique = new Set(Object.values(config.seats).flatMap((s) => s.chain));
   if (unique.size === 1) lines.push(`  ${C.dim("All seats use one model — add others with /models for real multi-model debate.")}`);
-  lines.push(`  ${C.dim("The first model in each chain leads; the rest are failover. Change with /models · /doctor (what's reachable) · /agents (live) · dashboard ⚙ Settings.")}`);
+  lines.push(`  ${C.dim("First model in each chain leads; the rest are failover.")}`);
+  lines.push(`  ${C.dim("Add a model / paste an API key: /models   ·   check what's reachable & fix issues: /doctor")}`);
+  lines.push(`  ${C.dim("Toggle parallel agents & subagents in the dashboard ⚙ Settings → Agents & execution.")}`);
   return lines.join("\n");
 }
 

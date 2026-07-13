@@ -27,8 +27,8 @@ const BUILD_START = /^(build|create|make|write|implement|design|add|fix|refactor
 
 // A question about Quorum's own setup: needs a config subject (models/seats/…) AND a question or
 // possessive context. Kept deterministic so it never reaches a model that would answer confusedly.
-const META_SUBJECT = /\b(models?|seats?|providers?|config(uration)?|settings?|failover|chains?|budgets?|arbiter|proposer|critic|api keys?|logged ?in|signed ?in|at the table)\b/i;
-const META_CONTEXT = /\b(what|which|who|show|list|tell me|what'?s|whats|my|our|are we|am i|do i|is the|current(ly)?|now|using|use|configured|set ?up)\b/i;
+const META_SUBJECT = /\b(models?|seats?|providers?|config(uration)?|settings?|failover|chains?|budgets?|arbiter|proposer|critic|api ?keys?|tokens?|logged ?in|signed ?in|log ?in|at the table|agents?|swarm|subagents?|parallel|concurrency)\b/i;
+const META_CONTEXT = /\b(what|which|who|show|list|tell me|what'?s|whats|my|our|are we|am i|do i|is the|is my|current(ly)?|now|using|use|configured|set ?up|how|why|help|enable|disable|turn (on|off)|working|wrong|not)\b/i;
 
 /** True for "what models are we using?", "show my config", "which seats?", etc. */
 export function isMetaQuestion(input: string): boolean {

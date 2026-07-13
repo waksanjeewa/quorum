@@ -27,5 +27,6 @@ export {
   type SessionConfig,
   type SeatConfig,
   type Budgets,
+  type AgentSettings,
   type ProviderConfig,
 } from "./config.js";

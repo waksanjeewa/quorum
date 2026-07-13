@@ -27,9 +27,15 @@ describe("claudeQueryOptions", () => {
   it("enables tools + sets cwd for execute mode", () => {
     const o = claudeQueryOptions("sys", "sess", "opus", { workingDirectory: "/wt/010" });
     expect(o["allowedTools"]).toContain("Edit");
+    expect(o["allowedTools"]).not.toContain("Task"); // no subagents unless asked
     expect(o["cwd"]).toBe("/wt/010");
     expect(o["permissionMode"]).toBe("acceptEdits");
     expect(o["resume"]).toBe("sess");
+  });
+  it("grants the Task tool (subagents) when execute.subagents is on", () => {
+    const o = claudeQueryOptions("sys", undefined, undefined, { workingDirectory: "/wt/010", subagents: true });
+    expect(o["allowedTools"]).toContain("Task");
+    expect(o["allowedTools"]).toContain("Edit");
   });
 });
 
