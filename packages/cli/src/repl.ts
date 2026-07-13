@@ -107,7 +107,17 @@ export async function repl(projectRoot: string): Promise<void> {
   let busy = false; // true while a goal is being triaged/convened — input is gated until it clears
   let heartbeat: ReturnType<typeof setInterval> | undefined;
 
+  // ── Ephemeral "/" menu (like Claude): drawn BELOW the prompt with cursor control, erased with
+  // \x1b[0J — it never enters scrollback, so nothing piles up. State: how many lines are drawn.
+  let menuOpen = 0;
+  const eraseMenu = (): void => {
+    if (!menuOpen) return;
+    process.stdout.write("\x1b[0J"); // clear from cursor to end of screen (the menu lives below)
+    menuOpen = 0;
+  };
+
   const printAbove = (text: string): void => {
+    eraseMenu();
     process.stdout.write("\r\x1b[K" + text + "\n");
     if (!closed) rl.prompt(true);
   };
@@ -376,6 +386,9 @@ export async function repl(projectRoot: string): Promise<void> {
   };
 
   rl.on("line", (raw) => {
+    // Enter = selection: the cursor just moved onto the menu's first row, so clear-down wipes the
+    // menu before any command output prints.
+    eraseMenu();
     // While a goal is being triaged/convened, ignore stray input (the terminal buffers it and it
     // replays once we're ready) so a second goal can't race the first.
     if (busy) return;
@@ -386,25 +399,50 @@ export async function repl(projectRoot: string): Promise<void> {
       });
   });
 
-  // Type "/" (as the whole line) → trigger readline's OWN completion display, which lists the
-  // commands ephemerally BELOW the prompt and clears them on the next keystroke (like Claude) — no
-  // permanent lines printed. Fires once per "/" so it can't loop on the synthetic key. TTY only.
+  // Live "/" menu (like Claude): while the line starts with "/", draw the matching commands BELOW
+  // the prompt (cursor hops down, draws, hops back); it filters as you type and is ERASED — not
+  // scrolled away — the moment you select (Enter), add an argument, or clear the line. TTY only.
   if (process.stdin.isTTY) {
-    let shownForLine = false;
-    const rlAny = rl as unknown as { line?: string; write?: (d: unknown, key?: { name: string }) => void };
+    const rlAny = rl as unknown as { line?: string; _refreshLine?: () => void };
+    const redrawInput = (): void => {
+      try {
+        rlAny._refreshLine?.();
+      } catch {
+        rl.prompt(true);
+      }
+    };
+    const drawMenu = (matches: Array<[string, string]>): void => {
+      eraseMenu();
+      const w = Math.max(...matches.map(([c]) => c.length));
+      const lines = matches.map(([c, d]) => `  ${C.brand(c.padEnd(w))}  ${C.dim(d)}`);
+      // Draw below the prompt, then move the cursor back up onto the prompt row.
+      process.stdout.write("\n" + lines.join("\n") + `\x1b[${lines.length}A\r`);
+      menuOpen = lines.length;
+      redrawInput();
+    };
     process.stdin.on("keypress", () =>
       setImmediate(() => {
-        if (closed || busy) return;
-        const line = rlAny.line ?? "";
-        if (line.length === 0) shownForLine = false;
-        if (line === "/" && !shownForLine) {
-          shownForLine = true;
-          try {
-            rlAny.write?.(null, { name: "tab" }); // show completions ephemerally
-          } catch {
-            /* no-op if this readline can't be driven */
-          }
+        if (closed || busy) {
+          eraseMenu();
+          return;
         }
+        const line = rlAny.line ?? "";
+        if (!line.startsWith("/") || line.includes(" ")) {
+          if (menuOpen) {
+            eraseMenu();
+            redrawInput();
+          }
+          return;
+        }
+        const matches = SLASH.filter(([c]) => c.startsWith(line));
+        if (matches.length === 0) {
+          if (menuOpen) {
+            eraseMenu();
+            redrawInput();
+          }
+          return;
+        }
+        drawMenu(matches);
       }),
     );
   }
