@@ -7,21 +7,51 @@ const STYLE = `
 :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --card:#f9fafb; --accent:#2563eb; --stop:#dc2626; }
 @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e5e7eb; --muted:#9aa4b2; --line:#252a33; --card:#161a21; --accent:#60a5fa; --stop:#f87171; } }
 * { box-sizing: border-box; }
-body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); flex-wrap:wrap; }
+body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--bg); flex-wrap:wrap; flex:none; }
 h1 { font-size:15px; margin:0; font-weight:700; }
 .stage { font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
 .spacer { flex:1; }
 button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:8px; padding:6px 12px; cursor:pointer; }
 button:hover { border-color:var(--accent); }
 button.stop { background:var(--stop); color:#fff; border-color:var(--stop); font-weight:600; }
-main { display:grid; grid-template-columns:220px 1fr; gap:0; height:calc(100vh - 53px); }
-aside { border-right:1px solid var(--line); padding:12px; overflow:auto; }
+button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+
+/* ── Goal bar (live view) ─────────────────────────────────────────── */
+.goalbar { display:none; align-items:flex-start; gap:10px; padding:9px 16px; border-bottom:1px solid var(--line); background:var(--card); flex:none; }
+body[data-view="live"] .goalbar { display:flex; }
+.goalbar .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:3px; flex:none; }
+.goalbar .g { font-weight:600; white-space:pre-wrap; word-break:break-word; }
+
+/* ── Compose / landing (no active session) ───────────────────────── */
+#compose { display:none; flex:1; overflow:auto; }
+body[data-view="compose"] #compose { display:block; }
+main { display:none; flex:1; min-height:0; grid-template-columns:220px 1fr; grid-template-rows:1fr auto; }
+body[data-view="live"] main { display:grid; }
+.composeWrap { max-width:760px; margin:0 auto; padding:40px 20px; }
+.composeWrap h2 { text-align:center; font-size:26px; margin:0 0 6px; }
+.composeWrap .tag { display:inline-block; font-size:11px; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:1px 8px; vertical-align:middle; margin-left:8px; }
+.composeWrap .subtitle { text-align:center; color:var(--muted); margin:0 0 22px; }
+.composeCard { border:1px solid var(--line); border-radius:16px; background:var(--card); padding:16px; }
+.presets { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.preset { border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:6px 16px; cursor:pointer; font-size:13px; }
+.preset.active { background:var(--fg); color:var(--bg); border-color:var(--fg); font-weight:600; }
+.mchips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+.mchip { display:flex; gap:6px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; background:var(--bg); }
+.mchip .role { color:var(--muted); text-transform:capitalize; }
+.mchip .badge { font-size:9px; padding:1px 5px; border-radius:4px; border:1px solid #16a34a; color:#16a34a; }
+.fuse { font-size:12px; color:var(--muted); margin-bottom:12px; }
+.fuse b { color:var(--fg); }
+#goalInput { width:100%; min-height:130px; font:inherit; padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--bg); color:var(--fg); resize:vertical; }
+.composeRow { display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px; }
+.composeRow .start { padding:9px 20px; font-size:14px; }
+
+aside { border-right:1px solid var(--line); padding:12px; overflow:auto; grid-row:1; grid-column:1; }
 .seat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px; }
 .seat .role { font-weight:600; text-transform:capitalize; }
 .seat .model { font-size:12px; color:var(--muted); word-break:break-all; }
 .seat.paused { opacity:.55; }
-#feed { overflow:auto; padding:16px; }
+#feed { overflow:auto; padding:16px; grid-row:1; grid-column:2; }
 .ev { margin-bottom:14px; }
 .ev .who { font-weight:600; }
 .ev .model { font-size:11px; color:var(--muted); margin-left:6px; }
@@ -32,9 +62,11 @@ aside { border-right:1px solid var(--line); padding:12px; overflow:auto; }
 .ev.thinking { color:var(--muted); font-style:italic; opacity:.85; }
 .ev.thinking::before { content:"⋯ "; }
 .move { font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:4px; padding:0 5px; margin-left:6px; }
-form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); position:sticky; bottom:0; background:var(--bg); grid-column:1 / -1; }
+form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line); background:var(--bg); grid-column:1 / -1; grid-row:2; }
 input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
 .hint { font-size:11px; color:var(--muted); }
+body[data-view="compose"] .liveonly { display:none; }
+
 #settingsPanel { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; }
 #settingsPanel.open { display:flex; align-items:center; justify-content:center; }
 .sheet { background:var(--bg); border:1px solid var(--line); border-radius:14px; width:min(680px,92vw); max-height:86vh; display:flex; flex-direction:column; padding:16px; gap:10px; }
@@ -58,6 +90,7 @@ input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); bo
 .keyRow { display:flex; gap:6px; align-items:center; font-size:12px; margin-bottom:6px; flex-wrap:wrap; }
 .keyRow .name { min-width:150px; }
 .keyRow input { flex:1; min-width:140px; font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
+.keyRow button.signout { color:var(--stop); border-color:var(--stop); }
 .section h3 { margin:0 0 6px; font-size:13px; }
 .pill { font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--line); }
 .pill.ok { color:#16a34a; border-color:#16a34a; } .pill.no { color:var(--muted); }
@@ -72,20 +105,27 @@ const TOKEN = ${JSON.stringify(token)};
 const BASE = ${JSON.stringify(baseUrl)};
 const H = { authorization: "Bearer " + TOKEN, "content-type": "application/json" };
 const api = (p, m="GET", b) => fetch(BASE + p, { method:m, headers:H, body: b?JSON.stringify(b):undefined });
-const feed = document.getElementById("feed");
-const seatsEl = document.getElementById("seats");
-const stageEl = document.getElementById("stage");
+const $ = id => document.getElementById(id);
+const feed = $("feed");
+const seatsEl = $("seats");
+const stageEl = $("stage");
 const seatColor = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return ${JSON.stringify(SEAT_COLORS)}[h % ${SEAT_COLORS.length}]; };
+const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props||{}); for (const k of kids) if(k!=null) e.append(k); return e; };
+const isFreeId = (id) => id.startsWith("ollama/") || /:free$/i.test(id);
+const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
 let sessionId = null;
+let settings = null;   // cached /settings for the compose view
+let es = null;         // live EventSource
 
+async function loadSettings() { settings = await (await api("/settings")).json(); return settings; }
+
+// ── Live transcript view ────────────────────────────────────────────
 function setThinking(text) {
-  let el = document.getElementById("thinking");
-  if (!el) { el = document.createElement("div"); el.id = "thinking"; el.className = "ev thinking"; }
-  el.textContent = text;
-  feed.appendChild(el); // keep it at the bottom
-  feed.scrollTop = feed.scrollHeight;
+  let e = $("thinking");
+  if (!e) { e = document.createElement("div"); e.id = "thinking"; e.className = "ev thinking"; }
+  e.textContent = text; feed.appendChild(e); feed.scrollTop = feed.scrollHeight;
 }
-function clearThinking() { const el = document.getElementById("thinking"); if (el) el.remove(); }
+function clearThinking() { const e = $("thinking"); if (e) e.remove(); }
 
 function addEvent(e) {
   if (e.type === "thinking") { setThinking("◌ " + e.seat + " (" + e.model + ") is thinking…"); return; }
@@ -101,14 +141,14 @@ function addEvent(e) {
   } else if (e.type === "stage") { div.textContent = "stage → " + e.to; stageEl.textContent = e.to; }
   else if (e.type === "seat_change") div.textContent = "↪ " + e.seat + ": " + e.from + " → " + e.to + " (" + e.reason + ")";
   else if (e.type === "control") div.textContent = "• " + e.action + (e.detail? ": "+e.detail : "") + " (" + e.by + ")";
-  feed.appendChild(div);
-  feed.scrollTop = feed.scrollHeight;
+  feed.appendChild(div); feed.scrollTop = feed.scrollHeight;
 }
 
 async function refreshSeats() {
   if (!sessionId) return;
   const s = await (await api("/sessions/"+sessionId)).json();
   stageEl.textContent = s.stage + "  ·  " + s.state;
+  if (s.goal) $("goalText").textContent = s.goal;
   seatsEl.innerHTML = "";
   for (const [seat, info] of Object.entries(s.seats)) {
     const d = document.createElement("div");
@@ -118,34 +158,103 @@ async function refreshSeats() {
   }
 }
 
-async function boot() {
-  const list = await (await api("/sessions")).json();
-  const latest = list.sessions[list.sessions.length-1];
-  if (!latest) { feed.textContent = "No active session."; return; }
-  sessionId = latest.id;
-  document.getElementById("sid").textContent = sessionId;
-  await refreshSeats();
-  setInterval(refreshSeats, 2000);
-  const es = new EventSource(BASE + "/sessions/"+sessionId+"/events?token="+encodeURIComponent(TOKEN));
+function showLive(status) {
+  sessionId = status.id;
+  document.body.dataset.view = "live";
+  $("sid").textContent = sessionId;
+  $("goalText").textContent = status.goal || "(no goal recorded)";
+  stageEl.textContent = status.stage + "  ·  " + status.state;
+  feed.innerHTML = "";
+  refreshSeats();
+  if (!showLive._iv) showLive._iv = setInterval(() => { if (sessionId) refreshSeats(); }, 2000);
+  if (es) es.close();
+  es = new EventSource(BASE + "/sessions/"+sessionId+"/events?token="+encodeURIComponent(TOKEN));
   es.onmessage = ev => addEvent(JSON.parse(ev.data));
 }
 
-document.getElementById("form").addEventListener("submit", async ev => {
+// ── Compose / landing view ──────────────────────────────────────────
+let preset = "Quality";
+function tierScore(id, p) {
+  const free = isFreeId(id), exec = isExecId(id);
+  const fast = /haiku|flash|mini|8b|instant|nano|small/i.test(id);
+  if (p === "Budget") return free ? 0 : 2;              // free first
+  if (p === "Fast")   return fast ? 0 : (free ? 1 : 2); // fast first
+  return exec ? 0 : (free ? 2 : 1);                     // Quality: executor/paid first
+}
+function renderCompose() {
+  const seats = (settings && settings.seats) || {};
+  const chips = $("mchips"); chips.innerHTML = "";
+  for (const [seat, s] of Object.entries(seats)) {
+    const lead = s.chain[0] || "account default";
+    const c = el("div", {className:"mchip"});
+    c.append(el("span", {className:"role", textContent: seat + ":"}), el("span", {textContent: lead}));
+    if (isExecId(lead)) c.append(el("span", {className:"badge", textContent:"builds"}));
+    chips.append(c);
+  }
+  chips.append(el("button", {textContent:"⚙ change models", onclick: openSettings}));
+  const arb = seats.arbiter && seats.arbiter.chain[0];
+  $("fuse").innerHTML = "Fuse with <b>" + (arb || "arbiter") + "</b> — the arbiter weighs the debate and converges it into one answer.";
+  const canBuild = Object.values(seats).some(s => s.chain.some(isExecId));
+  $("composeHint").textContent = canBuild ? "Plans and builds — Claude/Codex present." : "Plans only — add Claude or Codex in Settings to build.";
+}
+function showCompose() {
+  if (es) { es.close(); es = null; }
+  sessionId = null;
+  document.body.dataset.view = "compose";
+  renderCompose();
+}
+async function startFusion() {
+  const goal = $("goalInput").value.trim(); if (!goal) return;
+  const btn = $("startBtn"); btn.disabled = true; btn.textContent = "Starting…";
+  try {
+    const res = await api("/sessions", "POST", { goal });
+    if (!res.ok) throw new Error((await res.json()).error || res.status);
+    showLive(await res.json());
+  } catch (err) { btn.disabled = false; btn.textContent = "Start ▸"; alert("Could not start: " + err); }
+}
+
+// ── Boot ────────────────────────────────────────────────────────────
+async function boot() {
+  try { await loadSettings(); } catch (e) { settings = { seats:{}, budgets:{}, catalog:{providers:[]} }; }
+  let latest = null;
+  try { const list = await (await api("/sessions")).json(); latest = list.sessions[list.sessions.length-1]; } catch (e) {}
+  if (!latest) { showCompose(); return; }
+  showLive(latest);
+}
+
+// compose interactions
+$("presets").addEventListener("click", async e => {
+  const b = e.target.closest(".preset"); if (!b) return;
+  const p = b.dataset.p;
+  if (p === "Custom") { openSettings(); return; }
+  document.querySelectorAll(".preset").forEach(x => x.classList.toggle("active", x === b));
+  preset = p;
+  for (const s of Object.values(settings.seats)) {
+    s.chain = s.chain.map((id,i)=>({id,i})).sort((a,b)=> tierScore(a.id,p)-tierScore(b.id,p) || a.i-b.i).map(x=>x.id);
+  }
+  await api("/settings","PUT",{ seats:settings.seats, budgets:settings.budgets, providers:settings.providers });
+  renderCompose();
+});
+$("startBtn").addEventListener("click", startFusion);
+$("goalInput").addEventListener("keydown", e => { if ((e.metaKey||e.ctrlKey) && e.key === "Enter") startFusion(); });
+$("newBtn").addEventListener("click", async () => { await loadSettings(); $("goalInput").value = ""; document.querySelectorAll(".preset").forEach(x=>x.classList.toggle("active", x.dataset.p===preset)); showCompose(); });
+
+// live inject box
+$("form").addEventListener("submit", async ev => {
   ev.preventDefault();
-  const inp = document.getElementById("msg");
+  const inp = $("msg");
   const text = inp.value.trim(); if (!text || !sessionId) return;
   inp.value = "";
   if (text.startsWith("/")) await api("/sessions/"+sessionId+"/command", "POST", { command: text });
   else await api("/sessions/"+sessionId+"/inject", "POST", { content: text });
 });
-const panel = document.getElementById("settingsPanel");
-const cfgMsg = document.getElementById("cfgMsg");
-const sbody = document.getElementById("settingsBody");
+
+// ── Settings sheet (model manager) ──────────────────────────────────
+const panel = $("settingsPanel");
+const cfgMsg = $("cfgMsg");
+const sbody = $("settingsBody");
 let S = null;
-const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props||{}); for (const k of kids) if(k!=null) e.append(k); return e; };
 const modelId = (provId, model) => { const p = S.catalog.providers.find(x=>x.id===provId); if(!p) return model; return p.kind==="login" ? (model?provId+"/"+model:provId) : p.prefix+model; };
-const isFreeId = (id) => id.startsWith("ollama/") || /:free$/i.test(id);
-const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
 
 function renderSettings() {
   sbody.innerHTML = "";
@@ -183,15 +292,26 @@ function renderSettings() {
     row.append(el("span",{className:"name", textContent:p.label}));
     if (p.kind==="login") {
       const ok = dMap[p.id];
-      row.append(el("span",{className:"pill "+(ok?"ok":"no"), textContent: ok?"logged in":"log in"}));
+      row.append(el("span",{className:"pill "+(ok?"ok":"no"), textContent: ok?"signed in":"sign in"}));
       if(!ok){ const c=el("span"); c.innerHTML='run <code class="cmd">'+p.loginCmd+'</code> in a terminal'; row.append(c); }
+      else if(p.logoutCmd){
+        const so=el("button",{className:"signout", textContent:"Sign out"});
+        so.onclick=()=>{ const c=el("span",{className:"hint"}); c.innerHTML='run <code class="cmd">'+p.logoutCmd+'</code> in a terminal to switch accounts'; so.replaceWith(c); };
+        row.append(so);
+      }
     } else if (p.kind==="api") {
       const set = S.providerKeys[p.keyEnv];
       row.append(el("span",{className:"pill "+(set?"ok":"no"), textContent: set?"key saved":"no key"}));
-      const inp = el("input",{type:"password", placeholder:"paste "+p.keyEnv});
-      const save = el("button",{textContent:"save"});
-      save.onclick=async()=>{ if(!inp.value) return; const r=await (await api("/keys","POST",{env:p.keyEnv,value:inp.value})).json(); S.providerKeys[p.keyEnv]=!!r.ok; inp.value=""; renderSettings(); };
-      row.append(inp, save);
+      if (set) {
+        const so=el("button",{className:"signout", textContent:"Sign out"});
+        so.onclick=async()=>{ await api("/keys","DELETE",{env:p.keyEnv}); S.providerKeys[p.keyEnv]=false; renderSettings(); };
+        row.append(so);
+      } else {
+        const inp = el("input",{type:"password", placeholder:"paste "+p.keyEnv});
+        const save = el("button",{textContent:"save"});
+        save.onclick=async()=>{ if(!inp.value) return; const r=await (await api("/keys","POST",{env:p.keyEnv,value:inp.value})).json(); S.providerKeys[p.keyEnv]=!!r.ok; inp.value=""; renderSettings(); };
+        row.append(inp, save);
+      }
     } else {
       row.append(el("span",{className:"pill ok", textContent:"free · local"}));
     }
@@ -210,23 +330,25 @@ function renderSettings() {
   bsec.append(brow); sbody.append(bsec);
 }
 
-document.getElementById("settings").addEventListener("click", async () => {
+async function openSettings() {
   cfgMsg.textContent=""; cfgMsg.className="msg"; sbody.textContent="Loading…";
   panel.classList.add("open");
   S = await (await api("/settings")).json();
   renderSettings();
-});
-document.getElementById("cfgClose").addEventListener("click", () => panel.classList.remove("open"));
-document.getElementById("cfgSave").addEventListener("click", async () => {
+}
+$("settings").addEventListener("click", openSettings);
+$("cfgClose").addEventListener("click", () => panel.classList.remove("open"));
+$("cfgSave").addEventListener("click", async () => {
   if(!S) return;
   const res = await api("/settings","PUT",{ seats:S.seats, budgets:S.budgets, providers:S.providers });
   const b = await res.json();
   cfgMsg.textContent = res.ok ? (b.note||"Saved.") : (b.error||"Invalid");
   cfgMsg.className = "msg "+(res.ok?"ok":"err");
+  if (res.ok && document.body.dataset.view === "compose") { await loadSettings(); renderCompose(); }
 });
-document.getElementById("pause").addEventListener("click", () => api("/sessions/"+sessionId+"/pause","POST").then(refreshSeats));
-document.getElementById("resume").addEventListener("click", () => api("/sessions/"+sessionId+"/resume","POST").then(refreshSeats));
-document.getElementById("stop").addEventListener("click", () => api("/sessions/"+sessionId+"/stop","POST").then(refreshSeats));
+$("pause").addEventListener("click", () => { if(sessionId) api("/sessions/"+sessionId+"/pause","POST").then(refreshSeats); });
+$("resume").addEventListener("click", () => { if(sessionId) api("/sessions/"+sessionId+"/resume","POST").then(refreshSeats); });
+$("stop").addEventListener("click", () => { if(sessionId) api("/sessions/"+sessionId+"/stop","POST").then(refreshSeats); });
 boot();
 `;
 }
@@ -250,11 +372,13 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   <span class="stage" id="stage">…</span>
   <span class="hint">session <span id="sid">—</span></span>
   <span class="spacer"></span>
+  <button id="newBtn">＋ New fusion</button>
   <button id="settings">⚙ Settings</button>
-  <button id="pause">Pause</button>
-  <button id="resume">Resume</button>
-  <button class="stop" id="stop">◼ STOP</button>
+  <button class="liveonly" id="pause">Pause</button>
+  <button class="liveonly" id="resume">Resume</button>
+  <button class="stop liveonly" id="stop">◼ STOP</button>
 </header>
+<div class="goalbar"><span class="lbl">Goal</span><span class="g" id="goalText"></span></div>
 <div id="settingsPanel">
   <div class="sheet">
     <div class="row"><h2>Settings — models &amp; seats</h2><span style="flex:1"></span><button id="cfgClose">Close</button><button id="cfgSave">Save</button></div>
@@ -263,6 +387,25 @@ export function renderDashboard(token: string, baseUrl = ""): string {
     <div id="settingsBody">Loading…</div>
   </div>
 </div>
+<section id="compose"><div class="composeWrap">
+  <h2>Model Fusion <span class="tag">beta</span></h2>
+  <p class="subtitle">Run multiple models together on one goal — they debate, then converge into the best result.</p>
+  <div class="composeCard">
+    <div class="presets" id="presets">
+      <button class="preset active" data-p="Quality">Quality</button>
+      <button class="preset" data-p="Budget">Budget</button>
+      <button class="preset" data-p="Fast">Fast</button>
+      <button class="preset" data-p="Custom">Custom…</button>
+    </div>
+    <div class="mchips" id="mchips"></div>
+    <div class="fuse" id="fuse"></div>
+    <textarea id="goalInput" placeholder="Describe your goal — what should the models build or figure out?  (⌘/Ctrl+Enter to start)"></textarea>
+    <div class="composeRow">
+      <span class="hint" id="composeHint"></span>
+      <button class="primary start" id="startBtn">Start ▸</button>
+    </div>
+  </div>
+</div></section>
 <main>
   <aside id="seats"></aside>
   <div id="feed"></div>

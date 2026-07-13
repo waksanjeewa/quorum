@@ -39,6 +39,8 @@ export type SessionState = "running" | "paused" | "done" | "stopped" | "error";
 
 export interface SessionStatus {
   id: string;
+  /** The user's original goal. */
+  goal: string;
   state: SessionState;
   stage: Stage;
   seats: Record<SeatId, { model: string; paused: boolean }>;
@@ -231,6 +233,7 @@ export class RunningSession {
       .find((t) => !merged.has(t));
     return {
       id: this.id,
+      goal: this.session.goal,
       state: this.state,
       stage: currentStage(this.log),
       seats,

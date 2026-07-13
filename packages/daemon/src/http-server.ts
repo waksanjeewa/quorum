@@ -7,7 +7,7 @@ import { parseSessionConfig, type SessionConfig, type TranscriptEvent } from "@q
 import { Daemon, type DaemonOpts } from "./daemon.js";
 import { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
 import { doctorReport } from "./doctor.js";
-import { setSecret, getSecret, keychainAvailable } from "./secrets.js";
+import { setSecret, getSecret, deleteSecret, keychainAvailable } from "./secrets.js";
 import { configToYaml, keyStatus, MODEL_CATALOG } from "./settings.js";
 import type { RunningSession } from "./session-runner.js";
 
@@ -146,14 +146,24 @@ export class QuorumHttpServer {
           return json(res, 400, { error: err instanceof Error ? err.message : String(err) });
         }
       }
-      // POST /keys { env, value } — store an API key in the OS Keychain.
+      // POST /keys { env, value } — store an API key in the OS Keychain and apply it to the next session.
       if (parts[0] === "keys" && req.method === "POST") {
         const body = await readJson(req);
         const env = String(body.env ?? "");
         const value = String(body.value ?? "");
         if (!/^[A-Z0-9_]+$/.test(env) || !value) return json(res, 400, { error: "env (UPPER_SNAKE) and value required" });
         const saved = await setSecret(env, value);
-        return json(res, 200, { ok: saved, note: saved ? "Saved to your Keychain." : "No Keychain available — export the env var instead." });
+        this.daemon.setEnvVar(env, value); // usable immediately for the next session, no CLI restart
+        return json(res, 200, { ok: saved, note: saved ? "Saved to your Keychain — active for your next run." : "No Keychain — kept for this run; export the env var to persist." });
+      }
+      // DELETE /keys { env } — sign out: remove a stored API key from the Keychain + this run.
+      if (parts[0] === "keys" && req.method === "DELETE") {
+        const body = await readJson(req).catch(() => ({}));
+        const env = String((body as { env?: unknown }).env ?? "");
+        if (!/^[A-Z0-9_]+$/.test(env)) return json(res, 400, { error: "env (UPPER_SNAKE) required" });
+        await deleteSecret(env);
+        this.daemon.setEnvVar(env, undefined);
+        return json(res, 200, { ok: true, note: "Signed out — key removed." });
       }
 
       // /sessions ...

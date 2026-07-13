@@ -92,6 +92,16 @@ export class Daemon {
     return running;
   }
 
+  /**
+   * Set/clear an env var (e.g. an API key) for the *next* session, so a key saved from the dashboard
+   * takes effect without restarting the CLI. `undefined` clears it (sign-out). Existing running
+   * sessions keep the env they started with.
+   */
+  setEnvVar(name: string, value: string | undefined): void {
+    if (!this.opts.env) this.opts.env = { ...process.env };
+    this.opts.env[name] = value;
+  }
+
   get(id: string): RunningSession | undefined {
     return this.sessions.get(id);
   }

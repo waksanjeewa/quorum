@@ -7,6 +7,8 @@ export interface Session {
   id: string;
   dir: string;
   config: SessionConfig;
+  /** The user's original goal (from goal.md). */
+  goal: string;
 }
 
 export interface CreateSessionOpts {
@@ -31,7 +33,7 @@ export async function createSession(
   await mkdir(sessionFiles.artifactsDir(dir), { recursive: true });
   await writeFile(sessionFiles.goal(dir), goal.trim() + "\n", "utf8");
   await writeFile(sessionFiles.configSnapshot(dir), JSON.stringify(config, null, 2), "utf8");
-  return { id, dir, config };
+  return { id, dir, config, goal: goal.trim() };
 }
 
 /**
@@ -42,7 +44,8 @@ export async function openSession(projectRoot: string, id: string): Promise<Sess
   const dir = sessionDir(projectRoot, id);
   const snapshot = await readFile(sessionFiles.configSnapshot(dir), "utf8");
   const config = parseSessionConfig(JSON.parse(snapshot));
-  return { id, dir, config };
+  const goal = await readGoal(dir).catch(() => "");
+  return { id, dir, config, goal };
 }
 
 /** Read the session goal (goal.md). */

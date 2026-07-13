@@ -10,8 +10,8 @@ import { getSecret, knownKeyEnvs } from "./secrets.js";
  */
 export const MODEL_CATALOG = {
   providers: [
-    { id: "claude", label: "Claude", kind: "login", canExecute: true, loginCmd: "claude login", models: ["", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"] },
-    { id: "codex", label: "Codex (OpenAI)", kind: "login", canExecute: true, loginCmd: "codex login", models: ["", "gpt-5.5", "gpt-5"] },
+    { id: "claude", label: "Claude", kind: "login", canExecute: true, loginCmd: "claude login", logoutCmd: "claude logout", models: ["", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"] },
+    { id: "codex", label: "Codex (OpenAI)", kind: "login", canExecute: true, loginCmd: "codex login", logoutCmd: "codex logout", models: ["", "gpt-5.5", "gpt-5"] },
     { id: "ollama", label: "Ollama · local & free", kind: "local", prefix: "ollama/", models: ["llama3", "gemma3:1b", "qwen2.5", "mistral"] },
     { id: "openrouter", label: "OpenRouter · one key, 100s of models (many free)", kind: "api", aggregator: true, prefix: "openrouter/", keyEnv: "OPENROUTER_API_KEY", baseUrl: "https://openrouter.ai/api/v1", fetchModels: true, models: ["deepseek/deepseek-chat:free", "meta-llama/llama-3.3-70b-instruct:free", "nousresearch/hermes-3-llama-3.1-405b:free"] },
     { id: "groq", label: "Groq · one key, fast + free tier", kind: "api", aggregator: true, prefix: "groq/", keyEnv: "GROQ_API_KEY", baseUrl: "https://api.groq.com/openai/v1", fetchModels: true, models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "deepseek-r1-distill-llama-70b"] },
