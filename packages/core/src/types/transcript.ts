@@ -37,6 +37,8 @@ export const TranscriptEventSchema = z.discriminatedUnion("type", [
     from: z.string(),
     to: z.string(),
     reason: z.enum(["usage_limit", "error", "manual"]),
+    /** The underlying error / limit message, so the user can see *why* the seat changed. */
+    detail: z.string().optional(),
   }),
   z.object({
     ts: IsoTimestamp,

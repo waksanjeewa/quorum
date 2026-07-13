@@ -26,8 +26,14 @@ export function formatEvent(e: TranscriptEvent, color = true): string {
     }
     case "human":
       return `${c("\x1b[1m", "you".padEnd(9))} ${e.content}`;
-    case "seat_change":
-      return c(DIM, `↪ ${e.seat}: ${e.from} → ${e.to} (${e.reason})`);
+    case "seat_change": {
+      const base = `↪ ${e.seat}: ${e.from} → ${e.to} (${e.reason})${e.detail ? `: ${e.detail.replace(/\s+/g, " ").slice(0, 160)}` : ""}`;
+      // Known Codex snag: the account's default model is newer than any released Codex, or a
+      // ChatGPT-login account can't use the requested model. Failover already covered it — just tip.
+      const codexModelSnag = e.from.startsWith("codex") && /newer version of Codex|not supported when using Codex/i.test(e.detail ?? "");
+      const tip = codexModelSnag ? "\n  tip: update the Codex app, or drop the codex seat with /models, or use an API key (openai-api / github / openrouter)." : "";
+      return c(DIM, base + tip);
+    }
     case "stage":
       return c("\x1b[1m", `── stage → ${e.to} ──`);
     case "control":

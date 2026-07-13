@@ -177,6 +177,7 @@ export async function runRoundtable(opts: RunRoundtableOpts): Promise<Roundtable
           from: runner.id,
           to: replacement.id,
           reason: result.status === "usage_limit" ? "usage_limit" : "error",
+          ...("detail" in result && result.detail ? { detail: result.detail } : {}),
         });
         seats[seatId] = replacement;
         runner = replacement;

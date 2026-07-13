@@ -154,7 +154,7 @@ function addEvent(e) {
     div.innerHTML = '<span class="who">you</span><div class="content"></div>';
     div.querySelector(".content").textContent = e.content;
   } else if (e.type === "stage") { div.textContent = "stage → " + e.to; stageEl.textContent = e.to; }
-  else if (e.type === "seat_change") div.textContent = "↪ " + e.seat + ": " + e.from + " → " + e.to + " (" + e.reason + ")";
+  else if (e.type === "seat_change") div.textContent = "↪ " + e.seat + ": " + e.from + " → " + e.to + " (" + e.reason + ")" + (e.detail ? ": " + e.detail : "");
   else if (e.type === "control") div.textContent = "• " + e.action + (e.detail? ": "+e.detail : "") + " (" + e.by + ")";
   feed.appendChild(div); feed.scrollTop = feed.scrollHeight;
 }
