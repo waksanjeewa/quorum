@@ -23,6 +23,10 @@ Once public, the `curl … install.sh | bash` source install works for everyone.
 
 ## Publish to npm (the true one-liner)
 
+> **Name note:** the bare name `quorum` is already taken on npm. Publish under a **scope** you own
+> (e.g. `@waksanjeewa/quorum`) by setting `"name": "@waksanjeewa/quorum"` in `packages/cli/package.json`
+> first — or pick another unscoped name that's free.
+
 ```bash
 npm login                       # once
 cd packages/cli
@@ -30,7 +34,7 @@ npm publish --access public     # runs prepack → bundles automatically
 ```
 After this, anyone can:
 ```bash
-npm install -g quorum
+npm install -g @waksanjeewa/quorum
 quorum
 ```
 

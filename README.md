@@ -82,7 +82,8 @@ curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh 
 # or: git clone https://github.com/waksanjeewa/quorum && cd quorum && ./install.sh
 ```
 
-*(Once published, the one-liner will be `npm install -g quorum`.)*
+*(An npm one-liner is coming. Note: the bare name `quorum` is already taken on npm, so the published
+package will be scoped — likely `npm install -g @waksanjeewa/quorum`.)*
 
 **Log in to the models you want** — Quorum reuses logins you already have, no API keys required:
 
