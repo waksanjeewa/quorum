@@ -7,8 +7,31 @@ import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
 import { runSetup } from "./setup.js";
 import { resolveSecretsEnv, knownKeyEnvs } from "./keychain.js";
-import { C, PROMPT, quorumLogo } from "./theme.js";
+import { C, PROMPT, promptWith, quorumLogo } from "./theme.js";
 import type { RunningSession } from "@quorum/daemon";
+
+/** Slash commands + one-line help, for the "type /" menu and Tab completion. */
+const SLASH: Array<[string, string]> = [
+  ["/goal", "build this goal directly (skip the chat/greeting check)"],
+  ["/models", "pick models — login or paste an API key"],
+  ["/dashboard", "open the live web dashboard"],
+  ["/doctor", "check which model seats are ready"],
+  ["/agents", "seats, live activity & elapsed time"],
+  ["/status", "one-line session status"],
+  ["/pause", "pause the running session"],
+  ["/resume", "resume the running session"],
+  ["/stop", "stop the session (kill switch)"],
+  ["/config", "show where your config lives"],
+  ["/help", "full help"],
+  ["/exit", "leave quorum"],
+];
+const ALL_CMDS = SLASH.map(([c]) => c);
+/** Tab-completion for slash commands (readline calls this). */
+const completeSlash = (line: string): [string[], string] => {
+  if (!line.startsWith("/")) return [[], line];
+  const hits = ALL_CMDS.filter((c) => c.startsWith(line));
+  return [hits.length ? hits : ALL_CMDS, line];
+};
 
 const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
   ${C.brand("/goal")} ${C.dim("<text>")}    start building this goal directly (skip the chat/greeting check)
@@ -73,7 +96,7 @@ function answerAboutConfig(config: {
 
 /** The interactive Quorum shell: stay inside `quorum`, drive it with `/` commands. */
 export async function repl(projectRoot: string): Promise<void> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: PROMPT });
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: PROMPT, completer: completeSlash });
   let server: QuorumHttpServer | undefined;
   let session: RunningSession | undefined;
   let running = false;
@@ -114,6 +137,17 @@ export async function repl(projectRoot: string): Promise<void> {
       spinTimer = undefined;
     }
     process.stdout.write("\r\x1b[K"); // wipe the spinner line
+  };
+
+  // The "type /" command menu (like Claude Code), printed above the prompt; the typed "/" is kept.
+  const showSlashMenu = (): void => {
+    const w = Math.max(...SLASH.map(([c]) => c.length));
+    const body = SLASH.map(([c, d]) => `  ${C.brand(c.padEnd(w))}  ${C.dim(d)}`).join("\n");
+    printAbove(C.dim("  commands (↹ Tab to complete):") + "\n" + body);
+  };
+  // Reflect session state in the prompt so it's clear you're inside a run.
+  const refreshPrompt = (): void => {
+    rl.setPrompt(running && session ? promptWith(session.status().stage) : PROMPT);
   };
 
   // Start the local web dashboard once and keep it up for the whole shell session, so its URL is
@@ -200,8 +234,10 @@ export async function repl(projectRoot: string): Promise<void> {
     }
     // Reached only on a real goal (chat/early-return exited above); wipe done, prompt is clean.
     info(`✱ session ${session!.id} started · dashboard ${dashboardUrl}`);
+    refreshPrompt();
     session!.subscribe((e) => {
       lastEventAt = Date.now();
+      if (e.type === "stage") refreshPrompt();
       printAbove(formatEvent(e));
     });
 
@@ -219,6 +255,7 @@ export async function repl(projectRoot: string): Promise<void> {
     void session.wait().then(() => {
       running = false;
       if (heartbeat) clearInterval(heartbeat);
+      refreshPrompt();
       const s = session?.status();
       printAbove(`\x1b[1m✓ done\x1b[0m \x1b[2m(${s?.stage}, ${s?.turns} turns${s?.converged ? ", converged" : ""}, ${fmtElapsed(s?.elapsedMs ?? 0)})\x1b[0m`);
     });
@@ -308,6 +345,7 @@ export async function repl(projectRoot: string): Promise<void> {
         case "stop":
           await session?.stop();
           running = false;
+          refreshPrompt();
           info("stopped");
           return;
         case "config":
@@ -353,6 +391,19 @@ export async function repl(projectRoot: string): Promise<void> {
         if (!closed && !busy) rl.prompt();
       });
   });
+
+  // Type "/" on an empty line → pop the command menu (like Claude Code). Interactive terminals only.
+  if (process.stdin.isTTY) {
+    let lastLine = "";
+    process.stdin.on("keypress", () => {
+      setImmediate(() => {
+        if (closed) return;
+        const line = (rl as unknown as { line?: string }).line ?? "";
+        if (!busy && line === "/" && lastLine !== "/") showSlashMenu();
+        lastLine = line;
+      });
+    });
+  }
 
   rl.on("SIGINT", () => {
     if (running && session) {

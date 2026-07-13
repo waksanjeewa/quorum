@@ -28,8 +28,16 @@ export const C = {
   brand: wrap(fg(EMERALD)),
 };
 
-/** The shell prompt — a distinct brand-colored marker so you know you're inside Quorum. */
-export const PROMPT = `${C.brand("◆")} ${C.bold("quorum")} ${C.dim("›")} `;
+/** The shell prompt — a branded chip so it's obvious you're *inside* the Quorum shell. */
+const chip = enabled
+  ? `\x1b[48;2;16;185;129m\x1b[38;2;4;18;14m\x1b[1m ◆ quorum \x1b[0m` // emerald chip, dark text
+  : "◆ quorum";
+export const PROMPT = `${chip} ${C.brand("❯")} `;
+
+/** Same chip with a live state suffix (e.g. the running stage), for the in-session prompt. */
+export function promptWith(state?: string): string {
+  return state ? `${chip}${C.dim(" · " + state)} ${C.brand("❯")} ` : PROMPT;
+}
 
 export const QUORUM_ASCII = [
   String.raw`      o-----o        ___  _   _  ___  ____  _   _ __  __`,
