@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="brand-assets/quorum-logo-v2/lockup-dark.svg.png" alt="Quorum" width="360" />
+  <img src="brand-assets/quorum-logo-v2/lockup-dark-wide.png" alt="Quorum" width="440" />
 </p>
 
 <p align="center"><b>Many models, working together.</b></p>
