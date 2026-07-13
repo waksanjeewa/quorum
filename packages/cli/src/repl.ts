@@ -139,11 +139,6 @@ export async function repl(projectRoot: string): Promise<void> {
     process.stdout.write("\r\x1b[K"); // wipe the spinner line
   };
 
-  // Typing "/" shows a single lean line of command names (not a 12-line dump); ↹ Tab autocompletes
-  // and /help shows the descriptions. Printed once per "/" so it doesn't crowd the transcript.
-  const showSlashMenu = (): void => {
-    printAbove(`  ${C.dim("commands")}  ${ALL_CMDS.map((c) => C.brand(c)).join(" ")}  ${C.dim("· ↹ Tab · /help")}`);
-  };
   // Reflect session state in the prompt so it's clear you're inside a run.
   const refreshPrompt = (): void => {
     rl.setPrompt(running && session ? promptWith(session.status().stage) : PROMPT);
@@ -391,22 +386,27 @@ export async function repl(projectRoot: string): Promise<void> {
       });
   });
 
-  // Type "/" (as the whole line) → show the command menu ONCE, until the line is cleared/submitted.
-  // Interactive terminals only. Guarded hard so it can't repeat on every keystroke.
+  // Type "/" (as the whole line) → trigger readline's OWN completion display, which lists the
+  // commands ephemerally BELOW the prompt and clears them on the next keystroke (like Claude) — no
+  // permanent lines printed. Fires once per "/" so it can't loop on the synthetic key. TTY only.
   if (process.stdin.isTTY) {
     let shownForLine = false;
-    let lastMenuAt = 0;
-    const maybeMenu = (): void => {
-      if (closed || busy) return;
-      const line = (rl as unknown as { line?: string }).line ?? "";
-      if (line.length === 0) shownForLine = false; // reset once the line is empty (incl. after Enter)
-      if (line !== "/" || shownForLine) return;
-      if (Date.now() - lastMenuAt < 400) return; // debounce any keypress burst
-      shownForLine = true;
-      lastMenuAt = Date.now();
-      showSlashMenu();
-    };
-    process.stdin.on("keypress", () => setImmediate(maybeMenu));
+    const rlAny = rl as unknown as { line?: string; write?: (d: unknown, key?: { name: string }) => void };
+    process.stdin.on("keypress", () =>
+      setImmediate(() => {
+        if (closed || busy) return;
+        const line = rlAny.line ?? "";
+        if (line.length === 0) shownForLine = false;
+        if (line === "/" && !shownForLine) {
+          shownForLine = true;
+          try {
+            rlAny.write?.(null, { name: "tab" }); // show completions ephemerally
+          } catch {
+            /* no-op if this readline can't be driven */
+          }
+        }
+      }),
+    );
   }
 
   rl.on("SIGINT", () => {
