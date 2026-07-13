@@ -37,11 +37,17 @@ seats:
 
 | Aggregator | Prefix | Key env |
 |---|---|---|
+| GitHub Models (Copilot/GitHub users) | `github/…` | `GITHUB_TOKEN` |
 | OpenRouter | `openrouter/…` | `OPENROUTER_API_KEY` |
 | Groq | `groq/…` | `GROQ_API_KEY` |
 | Together AI | `together/…` | `TOGETHER_API_KEY` |
 | Fireworks AI | `fireworks/…` | `FIREWORKS_API_KEY` |
 | DeepInfra | `deepinfra/…` | `DEEPINFRA_API_KEY` |
+
+**GitHub Copilot users:** `GITHUB_TOKEN` is a fine-grained PAT with the **Models** permission (or the
+output of `gh auth token`). GitHub Models gives GPT-4o, Llama, Mistral and more on the free tier —
+e.g. `github/gpt-4o-mini` — so you can run the roundtable on your GitHub login plus any free model.
+(Like other aggregators, GitHub models deliberate and verify; building still needs `claude`/`codex`.)
 
 In `/models`, pick an aggregator and Quorum offers to **auto-spread** its models across the three
 seats. To also **build code autonomously**, add a `claude` or `codex` login — those two are the only

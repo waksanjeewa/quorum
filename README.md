@@ -158,11 +158,17 @@ Built-in aggregators (just add the API key — no `providers:` block needed for 
 
 | Provider | Model-id prefix | Key env |
 |---|---|---|
+| **GitHub Models** (Copilot users) | `github/…` | `GITHUB_TOKEN` |
 | OpenRouter | `openrouter/…` | `OPENROUTER_API_KEY` |
 | Groq | `groq/…` | `GROQ_API_KEY` |
 | Together AI | `together/…` | `TOGETHER_API_KEY` |
 | Fireworks AI | `fireworks/…` | `FIREWORKS_API_KEY` |
 | DeepInfra | `deepinfra/…` | `DEEPINFRA_API_KEY` |
+
+**Using GitHub Copilot / a GitHub account?** Pick **GitHub Models** in `/models` and paste a GitHub
+token (a fine-grained PAT with the **Models** permission, or `gh auth token`) — that unlocks GPT-4o,
+Llama, Mistral and more on GitHub's free tier, so a Copilot user can run the whole table on their
+GitHub login alongside any free model. Example: `github/gpt-4o-mini`.
 
 > **Note:** aggregator models plan, debate, and verify — but to **build code autonomously** you still
 > need a **Claude** or **Codex** login, since those two are the executors that edit files in a

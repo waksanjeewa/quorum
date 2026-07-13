@@ -170,14 +170,15 @@ interface ApiProvider {
 // Aggregators (one key, many models) first, then direct provider APIs. Numbers are the menu keys;
 // 1–3 (Claude/Codex/Ollama) are handled separately above, so these start at 4.
 const API_PROVIDERS: Record<string, ApiProvider> = {
-  "4": { label: "OpenRouter", keyEnv: "OPENROUTER_API_KEY", baseUrl: "https://openrouter.ai/api/v1", idPrefix: "openrouter", needsProviderEntry: true, defaultModel: "deepseek/deepseek-chat:free", note: "100s of models, many free", aggregator: true },
-  "5": { label: "Groq", keyEnv: "GROQ_API_KEY", baseUrl: "https://api.groq.com/openai/v1", idPrefix: "groq", needsProviderEntry: false, defaultModel: "llama-3.3-70b-versatile", note: "very fast, free tier", aggregator: true },
-  "6": { label: "Together AI", keyEnv: "TOGETHER_API_KEY", baseUrl: "https://api.together.xyz/v1", idPrefix: "together", needsProviderEntry: false, defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo", note: "many open models", aggregator: true },
-  "7": { label: "Fireworks AI", keyEnv: "FIREWORKS_API_KEY", baseUrl: "https://api.fireworks.ai/inference/v1", idPrefix: "fireworks", needsProviderEntry: false, defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct", note: "many open models", aggregator: true },
-  "8": { label: "DeepInfra", keyEnv: "DEEPINFRA_API_KEY", baseUrl: "https://api.deepinfra.com/v1/openai", idPrefix: "deepinfra", needsProviderEntry: false, defaultModel: "meta-llama/Llama-3.3-70B-Instruct", note: "many open models", aggregator: true },
-  "9": { label: "OpenAI", keyEnv: "OPENAI_API_KEY", baseUrl: "https://api.openai.com/v1", idPrefix: "openai-api", needsProviderEntry: false, defaultModel: "gpt-5.5", note: "gpt-5.5, gpt-5" },
-  "10": { label: "Anthropic", keyEnv: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1", idPrefix: "anthropic-api", needsProviderEntry: false, defaultModel: "claude-opus-4-8", note: "opus 4.8, sonnet 5" },
-  "11": { label: "Gemini", keyEnv: "GEMINI_API_KEY", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", idPrefix: "gemini-api", needsProviderEntry: false, defaultModel: "gemini-2.5-pro", note: "gemini 2.5 pro/flash" },
+  "4": { label: "GitHub Models", keyEnv: "GITHUB_TOKEN", baseUrl: "https://models.inference.ai.azure.com", idPrefix: "github", needsProviderEntry: false, defaultModel: "gpt-4o-mini", note: "Copilot/GitHub users — GitHub token, free tier", aggregator: true },
+  "5": { label: "OpenRouter", keyEnv: "OPENROUTER_API_KEY", baseUrl: "https://openrouter.ai/api/v1", idPrefix: "openrouter", needsProviderEntry: true, defaultModel: "deepseek/deepseek-chat:free", note: "100s of models, many free", aggregator: true },
+  "6": { label: "Groq", keyEnv: "GROQ_API_KEY", baseUrl: "https://api.groq.com/openai/v1", idPrefix: "groq", needsProviderEntry: false, defaultModel: "llama-3.3-70b-versatile", note: "very fast, free tier", aggregator: true },
+  "7": { label: "Together AI", keyEnv: "TOGETHER_API_KEY", baseUrl: "https://api.together.xyz/v1", idPrefix: "together", needsProviderEntry: false, defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo", note: "many open models", aggregator: true },
+  "8": { label: "Fireworks AI", keyEnv: "FIREWORKS_API_KEY", baseUrl: "https://api.fireworks.ai/inference/v1", idPrefix: "fireworks", needsProviderEntry: false, defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct", note: "many open models", aggregator: true },
+  "9": { label: "DeepInfra", keyEnv: "DEEPINFRA_API_KEY", baseUrl: "https://api.deepinfra.com/v1/openai", idPrefix: "deepinfra", needsProviderEntry: false, defaultModel: "meta-llama/Llama-3.3-70B-Instruct", note: "many open models", aggregator: true },
+  "10": { label: "OpenAI", keyEnv: "OPENAI_API_KEY", baseUrl: "https://api.openai.com/v1", idPrefix: "openai-api", needsProviderEntry: false, defaultModel: "gpt-5.5", note: "gpt-5.5, gpt-5" },
+  "11": { label: "Anthropic", keyEnv: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1", idPrefix: "anthropic-api", needsProviderEntry: false, defaultModel: "claude-opus-4-8", note: "opus 4.8, sonnet 5" },
+  "12": { label: "Gemini", keyEnv: "GEMINI_API_KEY", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", idPrefix: "gemini-api", needsProviderEntry: false, defaultModel: "gemini-2.5-pro", note: "gemini 2.5 pro/flash" },
 };
 
 /**

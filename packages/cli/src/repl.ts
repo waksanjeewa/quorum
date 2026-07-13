@@ -37,6 +37,7 @@ export async function repl(projectRoot: string): Promise<void> {
   let closed = false;
   let lastEventAt = 0;
   let dashboardUrl = "";
+  let busy = false; // true while a goal is being triaged/convened — input is gated until it clears
   let heartbeat: ReturnType<typeof setInterval> | undefined;
 
   const printAbove = (text: string): void => {
@@ -44,6 +45,32 @@ export async function repl(projectRoot: string): Promise<void> {
     if (!closed) rl.prompt(true);
   };
   const info = (text: string): void => printAbove(`\x1b[2m${text}\x1b[0m`);
+
+  // A live spinner for the "starting up" wait, so the user sees motion (not a frozen "thinking…").
+  // Redraws one line in place; input is paused meanwhile, so it never fights the prompt.
+  const SPIN = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let spinTimer: ReturnType<typeof setInterval> | undefined;
+  let spinFrame = 0;
+  let spinStart = 0;
+  const startSpinner = (label: string): void => {
+    stopSpinner();
+    spinStart = Date.now();
+    const draw = (): void => {
+      const secs = Math.floor((Date.now() - spinStart) / 1000);
+      const t = secs >= 3 ? C.dim(` · ${secs}s`) : "";
+      process.stdout.write(`\r\x1b[K${C.brand(SPIN[spinFrame % SPIN.length]!)} ${C.dim(label)}${t}`);
+      spinFrame++;
+    };
+    draw();
+    spinTimer = setInterval(draw, 90);
+  };
+  const stopSpinner = (): void => {
+    if (spinTimer) {
+      clearInterval(spinTimer);
+      spinTimer = undefined;
+    }
+    process.stdout.write("\r\x1b[K"); // wipe the spinner line
+  };
 
   // Start the local web dashboard once and keep it up for the whole shell session, so its URL is
   // stable and can be shown in the welcome. Returns the URL (empty string if it can't start).
@@ -85,32 +112,45 @@ export async function repl(projectRoot: string): Promise<void> {
   rl.prompt();
 
   const startGoal = async (goal: string): Promise<void> => {
-    const config = await loadConfig(projectRoot);
-    const env = await resolveSecretsEnv(knownKeyEnvs(config));
+    // Gate input + show a live spinner while we work out what to do and spin up the table. New
+    // keystrokes are paused (buffered by the terminal) until this clears, so goals can't collide.
+    busy = true;
+    rl.pause();
+    startSpinner("reading your goal…");
+    try {
+      const config = await loadConfig(projectRoot);
+      const env = await resolveSecretsEnv(knownKeyEnvs(config));
 
-    // Triage: don't convene a roundtable for a greeting / small talk / a quick question.
-    // Obvious cases are instant (no model call); only ambiguous input costs a model turn.
-    let decision = quickTriage(goal);
-    if (!decision) {
-      const triageRunner = buildTriageRunner(config, { env });
-      if (triageRunner) {
-        info("thinking…");
-        decision = await triage(triageRunner, goal);
+      // Triage: don't convene a roundtable for a greeting / small talk / a quick question.
+      // Obvious cases are instant (no model call); only ambiguous input costs a model turn.
+      let decision = quickTriage(goal);
+      if (!decision) {
+        const triageRunner = buildTriageRunner(config, { env });
+        if (triageRunner) {
+          startSpinner("thinking…");
+          decision = await triage(triageRunner, goal);
+        }
       }
-    }
-    if (decision?.intent === "chat") {
-      printAbove(`  ${C.cyan(decision.reply ?? "Hi!")}`);
-      return;
-    }
+      if (decision?.intent === "chat") {
+        stopSpinner();
+        printAbove(`  ${C.cyan(decision.reply ?? "Hi!")}`);
+        return;
+      }
 
-    if (session && running) await session.stop();
-    await ensureServer(env);
-    info(`✱ convening the roundtable — proposer · critic · arbiter…  ·  dashboard ${dashboardUrl}`);
-    session = await server!.daemon.createSession(goal, config);
-    running = true;
-    lastEventAt = Date.now();
-    info(`session ${session.id} started · dashboard ${dashboardUrl}`);
-    session.subscribe((e) => {
+      if (session && running) await session.stop();
+      startSpinner("convening the roundtable — proposer · critic · arbiter…");
+      await ensureServer(env);
+      session = await server!.daemon.createSession(goal, config);
+      running = true;
+      lastEventAt = Date.now();
+    } finally {
+      stopSpinner();
+      busy = false;
+      rl.resume();
+    }
+    // Reached only on a real goal (chat/early-return exited above); wipe done, prompt is clean.
+    info(`✱ session ${session!.id} started · dashboard ${dashboardUrl}`);
+    session!.subscribe((e) => {
       lastEventAt = Date.now();
       printAbove(formatEvent(e));
     });
@@ -241,10 +281,13 @@ export async function repl(projectRoot: string): Promise<void> {
   };
 
   rl.on("line", (raw) => {
+    // While a goal is being triaged/convened, ignore stray input (the terminal buffers it and it
+    // replays once we're ready) so a second goal can't race the first.
+    if (busy) return;
     void handle(raw)
       .catch((err) => printAbove(`\x1b[31merror:\x1b[0m ${String(err instanceof Error ? err.message : err)}`))
       .finally(() => {
-        if (!closed) rl.prompt();
+        if (!closed && !busy) rl.prompt();
       });
   });
 

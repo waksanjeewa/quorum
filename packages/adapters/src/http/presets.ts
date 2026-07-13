@@ -8,6 +8,9 @@ export const DIRECT_PROVIDERS: Record<string, { baseUrl: string; keyEnv: string 
   "anthropic-api": { baseUrl: "https://api.anthropic.com/v1", keyEnv: "ANTHROPIC_API_KEY" },
   // Gemini's OpenAI-compatibility endpoint.
   "gemini-api": { baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", keyEnv: "GEMINI_API_KEY" },
+  // GitHub Models — Copilot/GitHub users bring their GitHub token (a PAT with the "Models"
+  // permission, or `gh auth token`). OpenAI-compatible; free tier. Ids like `github/gpt-4o-mini`.
+  github: { baseUrl: "https://models.inference.ai.azure.com", keyEnv: "GITHUB_TOKEN" },
   // OpenRouter-style aggregators: ONE key unlocks many models (GPT, Claude, Gemini, Llama,
   // DeepSeek, …), so you don't need to subscribe to each AI separately. All OpenAI-compatible.
   groq: { baseUrl: "https://api.groq.com/openai/v1", keyEnv: "GROQ_API_KEY" },
