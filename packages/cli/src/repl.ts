@@ -206,7 +206,7 @@ export async function repl(projectRoot: string): Promise<void> {
     return dashboardUrl;
   };
 
-  console.log("\n" + quorumLogo() + "\n" + C.muted("        the session never dies · you're always at the table") + "\n");
+  console.log("\n" + quorumLogo() + "\n");
   console.log(HELP + "\n");
 
   // Model setup is mandatory — if there's no config, go straight into it.

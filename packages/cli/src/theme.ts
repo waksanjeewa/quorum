@@ -39,14 +39,15 @@ export function promptWith(state?: string): string {
   return state ? `${chip}${C.dim(" · " + state)} ${C.brand("❯")} ` : PROMPT;
 }
 
+const COMPACT_MARK_WIDTH = 14;
 const COMPACT_MARK = [
-  "        ●       ",
-  "    ╭───┴───╮   ",
-  "  ●─╯  ◢◣  ╰─● ",
-  "  │    ◥◤    │  ",
-  "  ●─╮  ◢◣  ╭─● ",
-  "    ╰───┬───╯   ",
-  "        ●       ",
+  "      ●",
+  "  ╭───┴───╮",
+  "●─╯ ◢◣ ╰─●",
+  "│   ◥◤   │",
+  "●─╮ ◢◣ ╭─●",
+  "  ╰───┬───╯",
+  "      ●",
 ] as const;
 
 export const QUORUM_ASCII_WORD = [
@@ -58,28 +59,28 @@ export const QUORUM_ASCII_WORD = [
 ] as const;
 
 export const QUORUM_TERMINAL_LOCKUP = [
-  `${COMPACT_MARK[0]} ${QUORUM_ASCII_WORD[0]}`,
-  `${COMPACT_MARK[1]} ${QUORUM_ASCII_WORD[1]}`,
-  `${COMPACT_MARK[2]} ${QUORUM_ASCII_WORD[2]}`,
-  `${COMPACT_MARK[3]} ${QUORUM_ASCII_WORD[3]}`,
-  `${COMPACT_MARK[4]} ${QUORUM_ASCII_WORD[4]}`,
-  `${COMPACT_MARK[5]}   many models, working together`,
-  `${COMPACT_MARK[6]}   local-first consensus`,
+  `${markPlain(0)} ${QUORUM_ASCII_WORD[0]}`,
+  `${markPlain(1)} ${QUORUM_ASCII_WORD[1]}`,
+  `${markPlain(2)} ${QUORUM_ASCII_WORD[2]}`,
+  `${markPlain(3)} ${QUORUM_ASCII_WORD[3]}`,
+  `${markPlain(4)} ${QUORUM_ASCII_WORD[4]}`,
+  `${markPlain(5)}   many models, working together`,
+  `${markPlain(6)}   the session never dies · you're always at the table`,
 ] as const;
 
 /** Logo-v2-inspired CLI launch lockup: compact mark + correct ASCII QUORUM word. */
 export function quorumLogo(): string {
   if (!enabled) return QUORUM_TERMINAL_LOCKUP.join("\n");
-  const e = color24(EMERALD, "●");
+  const mark = colorMark();
   const word = QUORUM_ASCII_WORD.map((line) => C.text(C.bold(line)));
   return [
-    `        ${e}        ${word[0]}`,
-    `    ${color24(TEAL, "╭───┴───╮")}    ${word[1]}`,
-    `  ${color24(EMERALD, "●")}${color24(TEAL, "─╯")}  ${color24(EMERALD, "◢")}${color24(CYAN, "◣")}  ${color24(TEAL, "╰─")}${color24(AMBER, "●")}  ${word[2]}`,
-    `  ${color24(TEAL, "│")}    ${color24(CYAN, "◥")}${color24(EMERALD, "◤")}    ${color24(TEAL, "│")}   ${word[3]}`,
-    `  ${color24(CYAN, "●")}${color24(TEAL, "─╮")}  ${color24(TEAL, "◢")}${color24(CYAN, "◣")}  ${color24(TEAL, "╭─")}${color24(CYAN, "●")}  ${word[4]}`,
-    `    ${color24(TEAL, "╰───┬───╯")}      ${C.muted("many models, working together")}`,
-    `        ${color24(TEAL, "●")}        ${C.muted("local-first consensus")}`,
+    `${mark[0]} ${word[0]}`,
+    `${mark[1]} ${word[1]}`,
+    `${mark[2]} ${word[2]}`,
+    `${mark[3]} ${word[3]}`,
+    `${mark[4]} ${word[4]}`,
+    `${mark[5]}   ${C.muted("many models, working together")}`,
+    `${mark[6]}   ${C.muted("the session never dies · you're always at the table")}`,
   ].join("\n");
 }
 
@@ -97,6 +98,26 @@ export function banner(lines: string[]): string {
 function stripAnsi(s: string): string {
   // eslint-disable-next-line no-control-regex
   return s.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function markPlain(i: number): string {
+  return (COMPACT_MARK[i] ?? "").padEnd(COMPACT_MARK_WIDTH, " ");
+}
+
+function colorMark(): string[] {
+  return [
+    padAnsi(`      ${color24(EMERALD, "●")}`, COMPACT_MARK_WIDTH),
+    padAnsi(`  ${color24(TEAL, "╭───┴───╮")}`, COMPACT_MARK_WIDTH),
+    padAnsi(`${color24(EMERALD, "●")}${color24(TEAL, "─╯")} ${color24(EMERALD, "◢")}${color24(CYAN, "◣")} ${color24(TEAL, "╰─")}${color24(AMBER, "●")}`, COMPACT_MARK_WIDTH),
+    padAnsi(`${color24(TEAL, "│")}   ${color24(CYAN, "◥")}${color24(EMERALD, "◤")}   ${color24(TEAL, "│")}`, COMPACT_MARK_WIDTH),
+    padAnsi(`${color24(CYAN, "●")}${color24(TEAL, "─╮")} ${color24(TEAL, "◢")}${color24(CYAN, "◣")} ${color24(TEAL, "╭─")}${color24(CYAN, "●")}`, COMPACT_MARK_WIDTH),
+    padAnsi(`  ${color24(TEAL, "╰───┬───╯")}`, COMPACT_MARK_WIDTH),
+    padAnsi(`      ${color24(TEAL, "●")}`, COMPACT_MARK_WIDTH),
+  ];
+}
+
+function padAnsi(s: string, width: number): string {
+  return s + " ".repeat(Math.max(width - stripAnsi(s).length, 0));
 }
 
 function color24([r, g, b]: Rgb, s: string): string {

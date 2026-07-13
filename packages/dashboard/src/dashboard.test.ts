@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderDashboard } from "./index.js";
+import { APP_VERSION, renderDashboard } from "./index.js";
 
 describe("renderDashboard", () => {
   const html = renderDashboard("secret-token-123");
@@ -13,6 +13,7 @@ describe("renderDashboard", () => {
     expect(html).toContain('id="activity"'); // active agents/activity
     expect(html).toContain('class="qLogo"'); // real Quorum mark in the header
     expect(html).toContain('class="qLogo heroLogo"'); // real Quorum mark in the compose hero
+    expect(html).toContain(`v${APP_VERSION}`); // public app version
     expect(html).toContain("#F59E0B"); // single amber consensus node
     expect(html).not.toContain('id="seats"'); // separate agent cards are intentionally gone
     expect(html).not.toContain("<h3>Agents</h3>");

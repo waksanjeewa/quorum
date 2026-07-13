@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="brand-assets/quorum-logo-v2/lockup-dark-wide.png" alt="Quorum" width="440" />
+  <img src="docs/quorum-github-hero.svg" alt="Quorum — many models, working together" width="760" />
 </p>
 
-<p align="center"><b>Many models, working together.</b></p>
+<p align="center"><b>Many models, working together.</b> <code>v0.8.0</code></p>
 
 [![CI](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -12,6 +12,9 @@
 **Many models, working together — the session will never die.** Multiple AI models collaborate on one goal — brainstorming,
 planning, and building together — handing off to each other when usage limits hit, with you able to
 step in at any moment without stopping the work.
+
+At a glance: you give Quorum a goal, a roundtable of models proposes/critiques/decides, then Claude
+or Codex builds in an isolated worktree, verifies, reviews, and merges.
 
 ```mermaid
 flowchart LR
@@ -230,6 +233,11 @@ Run the tests with `corepack pnpm test`. For a manual check against real models,
 Mix free and paid models and Quorum offers **frugal mode**: free models (Ollama, OpenRouter `:free`)
 do the bulk drafting; your paid models are spent only on verifying and improving; Claude/Codex do
 the building. Hard caps (`max_cost_usd`, `wall_clock_max`) back it up.
+
+## Contributors
+
+- **Kumudu Sanjeewa** — creator and maintainer
+- **Codex** — AI implementation collaborator
 
 ## License
 

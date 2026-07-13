@@ -3,6 +3,10 @@
 ## 0.8.0
 - **Public-launch polish**: dashboard header/compose now use the real Quorum consensus-table logo,
   and the CLI launch banner combines that compact mark with the correct ASCII `QUORUM` word.
+- Dashboard and public docs now show the current public version (`v0.8.0`).
+- GitHub README now uses a custom dark Quorum hero graphic, contributor attribution, and a clearer
+  at-a-glance product flow.
+- Public webpage now includes a visual terminal → dashboard → verified merge walkthrough.
 - Interactive shell `/` menu now supports terminal-popup discovery with ↑/↓ selection and Enter.
 - Dashboard now has working **New roundtable**, a left-side roundtable list, and active
   model/activity chips under **Activity**.

@@ -3,6 +3,8 @@
 // No external CDN/scripts/fonts — everything inline, so it works offline and inside a future
 // VS Code webview.
 
+export const APP_VERSION = "0.8.0";
+
 function logoMark(gradientId: string, className = "qLogo"): string {
   return `<svg class="${className}" viewBox="0 0 100 100" role="img" aria-label="Quorum logo">
   <defs>
@@ -46,6 +48,7 @@ h1 { font-size:15px; margin:0; font-weight:700; }
 .brand { display:flex; align-items:center; gap:8px; letter-spacing:-.01em; }
 .qLogo { width:24px; height:24px; flex:none; display:block; }
 .qLogo .ring { opacity:.62; }
+.version { font-size:10px; color:var(--amber); border:1px solid color-mix(in srgb, var(--amber) 55%, transparent); border-radius:999px; padding:1px 7px; letter-spacing:.04em; background:color-mix(in srgb, var(--amber) 8%, transparent); }
 .dia { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 .stage { font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
 .spacer { flex:1; }
@@ -549,6 +552,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
 <body>
 <header>
   <h1 class="brand">${logoMark("q-logo-header")}<span>Quorum</span></h1>
+  <span class="version">v${APP_VERSION}</span>
   <span class="stage" id="stage">…</span>
   <span class="hint">session <span id="sid">—</span></span>
   <span class="spacer"></span>
@@ -568,7 +572,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   </div>
 </div>
 <section id="compose"><div class="composeWrap">
-  <h2><span class="heroBrand">${logoMark("q-logo-hero", "qLogo heroLogo")}<span>Convene the roundtable</span></span> <span class="tag">beta</span></h2>
+  <h2><span class="heroBrand">${logoMark("q-logo-hero", "qLogo heroLogo")}<span>Convene the roundtable</span></span> <span class="tag">beta · v${APP_VERSION}</span></h2>
   <p class="subtitle">A <b>quorum</b> of AI models debates your goal and converges on the best answer — brainstorming, planning, and building together.</p>
   <div class="composeCard">
     <div class="presets" id="presets">

@@ -5,6 +5,7 @@ describe("terminal launch logo", () => {
   it("combines the compact logo-v2 mark with the correct ASCII QUORUM word", () => {
     const logo = quorumLogo();
     expect(logo).toContain("many models, working together");
+    expect(logo).toContain("the session never dies");
     expect(logo).toContain("◢◣");
     expect(logo).toContain("●");
     expect(logo).toContain(QUORUM_ASCII_WORD[0]);
@@ -13,5 +14,7 @@ describe("terminal launch logo", () => {
     expect(logo).not.toContain("QUBBUM");
     expect(logo).not.toContain("o-----o");
     expect(QUORUM_TERMINAL_LOCKUP).toHaveLength(7);
+    expect(QUORUM_TERMINAL_LOCKUP.every((line) => line.length < 80)).toBe(true);
+    expect(QUORUM_TERMINAL_LOCKUP[0].indexOf(QUORUM_ASCII_WORD[0])).toBeLessThan(18);
   });
 });
