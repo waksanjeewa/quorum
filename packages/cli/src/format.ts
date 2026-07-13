@@ -1,8 +1,14 @@
 import type { TranscriptEvent } from "@quorum/core";
 
-const COLORS = ["\x1b[36m", "\x1b[35m", "\x1b[32m", "\x1b[33m", "\x1b[34m"]; // cyan/magenta/green/yellow/blue
+const COLORS = [
+  "\x1b[38;2;16;185;129m",
+  "\x1b[38;2;14;165;164m",
+  "\x1b[38;2;34;211;238m",
+  "\x1b[38;2;245;158;11m",
+  "\x1b[38;2;230;241;238m",
+];
 const RESET = "\x1b[0m";
-const DIM = "\x1b[2m";
+const DIM = "\x1b[38;2;143;163;160m";
 
 function seatColor(seat: string): string {
   let h = 0;

@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="quorum-icon.svg" type="image/svg+xml" />
 <title>Quorum — multiple AI models plan and build together</title>
 <meta name="description" content="Many models working together — the session will never die. Local-first tool where multiple AI models collaborate on one goal: plan and build together, with usage-limit-aware handoff." />
 <style>
   :root{
-    --bg:#0b0d12; --panel:#12151d; --line:#232838; --fg:#e7ebf3; --muted:#9aa4b8;
-    --brand:#c026d3; --brand2:#6366f1; --accent:#22d3ee; --green:#22c55e;
+    --bg:#0A0F12; --panel:#101719; --line:#20312f; --fg:#E6F1EE; --muted:#8FA3A0;
+    --brand:#10B981; --brand2:#0EA5A4; --accent:#22D3EE; --amber:#F59E0B; --green:#10B981;
     --maxw:1080px;
   }
   *{box-sizing:border-box}
@@ -17,7 +18,7 @@
   a{color:var(--accent);text-decoration:none}
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
   .btn{display:inline-block;padding:12px 20px;border-radius:10px;font-weight:600;border:1px solid var(--line)}
-  .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none}
+  .btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2),var(--accent));color:#07100f;border:none}
   .btn.ghost{background:transparent;color:var(--fg)}
   header{position:sticky;top:0;background:rgba(11,13,18,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
   header .wrap{display:flex;align-items:center;gap:16px;height:60px}
@@ -25,7 +26,7 @@
   .logo .d{color:var(--brand)}
   header nav{margin-left:auto;display:flex;gap:20px;align-items:center}
   header nav a{color:var(--muted);font-size:14px}
-  .hero{padding:90px 0 70px;text-align:center;background:radial-gradient(60% 60% at 50% 0%,rgba(192,38,211,.15),transparent)}
+  .hero{padding:90px 0 70px;text-align:center;background:radial-gradient(60% 60% at 50% 0%,rgba(16,185,129,.14),transparent)}
   .hero h1{font-size:52px;line-height:1.08;margin:0 0 16px;font-weight:800;letter-spacing:-.02em}
   .hero h1 .grad{background:linear-gradient(120deg,var(--brand),var(--brand2),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
   .hero p.lead{font-size:20px;color:var(--muted);max-width:720px;margin:0 auto 28px}
@@ -50,7 +51,7 @@
   .chip .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
   .chip .tag.free{color:var(--green);border-color:var(--green)}
   .chip .tag.exec{color:var(--accent);border-color:var(--accent)}
-  .proof{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(34,211,238,.08));border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;max-width:760px;margin:0 auto}
+  .proof{background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(34,211,238,.08));border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;max-width:760px;margin:0 auto}
   .proof .big{font-size:40px;font-weight:800;background:linear-gradient(120deg,var(--brand),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
   .steps{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
   .steps .s{display:flex;gap:14px;align-items:flex-start}
@@ -72,7 +73,7 @@
   .compare th,.compare td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
   .compare thead th{background:var(--panel);font-size:13px}
   .compare td:first-child{color:var(--muted);width:24%}
-  .compare .o{color:var(--muted)} .compare .q{color:var(--fg)} .compare .qcol{background:rgba(192,38,211,.07)}
+  .compare .o{color:var(--muted)} .compare .q{color:var(--fg)} .compare .qcol{background:rgba(16,185,129,.07)}
   @media(max-width:820px){.roles{grid-template-columns:1fr}}
   footer{padding:40px 0;border-top:1px solid var(--line);color:var(--muted);text-align:center;font-size:14px}
   @media(max-width:820px){.grid{grid-template-columns:1fr 1fr}.hero h1{font-size:38px}}
@@ -81,7 +82,7 @@
 </head>
 <body>
 <header><div class="wrap">
-  <div class="logo">Quo<span class="d">◆</span>rum</div>
+  <a href="#top" class="logo" aria-label="Quorum"><img src="quorum-lockup.svg" alt="Quorum" height="30" style="display:block" /></a>
   <nav>
     <a href="#how-it-works">How it works</a>
     <a href="#why">Why different</a>
@@ -128,9 +129,9 @@
   <h2 class="title">How it works</h2>
   <p class="sub">Quorum itself is the conductor — not an AI. It decides who speaks, hands off the moment a model hits its limit, assigns the building, runs the checks, and merges. The models just take seats.</p>
   <div class="roles">
-    <div class="role"><div class="r"><span class="dot" style="background:#22d3ee"></span>Proposer</div><p>Advances one concrete approach toward your goal. Decisive and specific — it moves the work forward.</p></div>
-    <div class="role"><div class="r"><span class="dot" style="background:#c026d3"></span>Critic</div><p>Hunts for weaknesses, gaps, and risks — and <b>can't rubber-stamp early</b>. This is where mistakes get caught before they ship.</p></div>
-    <div class="role"><div class="r"><span class="dot" style="background:#22c55e"></span>Arbiter</div><p>Weighs the proposal against the critique, breaks ties, and calls when it's genuinely good enough.</p></div>
+    <div class="role"><div class="r"><span class="dot" style="background:#22D3EE"></span>Proposer</div><p>Advances one concrete approach toward your goal. Decisive and specific — it moves the work forward.</p></div>
+    <div class="role"><div class="r"><span class="dot" style="background:#0EA5A4"></span>Critic</div><p>Hunts for weaknesses, gaps, and risks — and <b>can't rubber-stamp early</b>. This is where mistakes get caught before they ship.</p></div>
+    <div class="role"><div class="r"><span class="dot" style="background:#F59E0B"></span>Arbiter</div><p>Weighs the proposal against the critique, breaks ties, and calls when it's genuinely good enough.</p></div>
   </div>
   <p class="lead2"><b>Claude and Codex are the executors</b> — the only models that can edit files and build. Free models (Ollama, OpenRouter) deliberate, draft, and verify. Every seat is a <b>failover chain</b>: hit a limit, and the next model reads the same shared transcript and continues that seat exactly where it left off — so <b>no single model owns the work</b>.</p>
   <div class="journey">

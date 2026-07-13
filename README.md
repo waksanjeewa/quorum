@@ -1,4 +1,8 @@
-# Quorum
+<p align="center">
+  <img src="brand-assets/quorum-logo-v2/lockup-dark.svg.png" alt="Quorum" width="360" />
+</p>
+
+<p align="center"><b>Many models, working together.</b></p>
 
 [![CI](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/waksanjeewa/quorum/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

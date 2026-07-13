@@ -7,7 +7,7 @@ import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
 import { runSetup } from "./setup.js";
 import { resolveSecretsEnv, knownKeyEnvs } from "./keychain.js";
-import { C, PROMPT, banner } from "./theme.js";
+import { C, PROMPT, quorumLogo } from "./theme.js";
 import type { RunningSession } from "@quorum/daemon";
 
 const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
@@ -57,14 +57,7 @@ export async function repl(projectRoot: string): Promise<void> {
     return dashboardUrl;
   };
 
-  console.log(
-    "\n" +
-      banner([
-        `${C.brand("◆")} ${C.bold("Quorum")} ${C.dim("— many models, working together")}`,
-        `${C.dim("the session never dies · you're always at the table")}`,
-      ]) +
-      "\n",
-  );
+  console.log("\n" + quorumLogo() + "\n" + C.muted("        the session never dies · you're always at the table") + "\n");
   console.log(HELP + "\n");
 
   // Model setup is mandatory — if there's no config, go straight into it.

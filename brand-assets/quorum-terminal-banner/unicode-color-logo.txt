@@ -1,0 +1,7 @@
+        ●
+    ╭───┴───╮        Quorum
+  ●─╯  ◢◣  ╰─●       many models, working together
+  │    ◥◤    │
+  ●─╮  ◢◣  ╭─●
+    ╰───┬───╯
+        ●

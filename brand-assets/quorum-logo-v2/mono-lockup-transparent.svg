@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 160" role="img" aria-labelledby="title desc">
+  <title id="title">Quorum monochrome horizontal logo</title>
+  <desc id="desc">One-color Quorum wordmark with six-seat consensus mark.</desc>
+  <g transform="translate(30 30)">
+    <path d="M50 14 80.3 32.5 80.3 67.5 50 86 19.7 67.5 19.7 32.5Z" fill="none" stroke="#E6F1EE" stroke-width="2.2" stroke-linejoin="round" opacity=".7"/>
+    <g fill="#E6F1EE">
+      <path d="M50 31 66.5 40.5 66.5 59.5 50 69 33.5 59.5 33.5 40.5Z"/>
+      <circle cx="50" cy="14" r="4.8"/>
+      <circle cx="80.3" cy="32.5" r="5.2"/>
+      <circle cx="80.3" cy="67.5" r="4.8"/>
+      <circle cx="50" cy="86" r="4.8"/>
+      <circle cx="19.7" cy="67.5" r="4.8"/>
+      <circle cx="19.7" cy="32.5" r="4.8"/>
+    </g>
+  </g>
+  <text x="154" y="99" fill="#E6F1EE" font-family="Inter, Geist, Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="64" font-weight="650">Quorum</text>
+</svg>
