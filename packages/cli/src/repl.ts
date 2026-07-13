@@ -139,11 +139,10 @@ export async function repl(projectRoot: string): Promise<void> {
     process.stdout.write("\r\x1b[K"); // wipe the spinner line
   };
 
-  // The "type /" command menu (like Claude Code), printed above the prompt; the typed "/" is kept.
+  // Typing "/" shows a single lean line of command names (not a 12-line dump); ↹ Tab autocompletes
+  // and /help shows the descriptions. Printed once per "/" so it doesn't crowd the transcript.
   const showSlashMenu = (): void => {
-    const w = Math.max(...SLASH.map(([c]) => c.length));
-    const body = SLASH.map(([c, d]) => `  ${C.brand(c.padEnd(w))}  ${C.dim(d)}`).join("\n");
-    printAbove(C.dim("  commands (↹ Tab to complete):") + "\n" + body);
+    printAbove(`  ${C.dim("commands")}  ${ALL_CMDS.map((c) => C.brand(c)).join(" ")}  ${C.dim("· ↹ Tab · /help")}`);
   };
   // Reflect session state in the prompt so it's clear you're inside a run.
   const refreshPrompt = (): void => {

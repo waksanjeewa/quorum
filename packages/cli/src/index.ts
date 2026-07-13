@@ -175,6 +175,23 @@ async function doctor(projectRoot: string): Promise<void> {
     console.log(`  ${mark} ${name.padEnd(9)} → ${first ?? "no reachable model in chain"}`);
   }
 
+  // Live test turn for executor models (claude/codex): catches "auth OK but the model is rejected"
+  // (e.g. Codex's account-default model needs a newer CLI) before a real goal hits it.
+  const execIds = [...new Set(Object.values(config.seats).flatMap((s) => s.chain))].filter((m) => /^(claude|codex)(\/|$)/.test(m) && ok.get(m));
+  if (execIds.length) {
+    const { liveTurnCheck } = await import("@quorum/daemon");
+    const env = await resolveSecretsEnv(knownKeyEnvs(config));
+    console.log(`\n\x1b[1mBuild test\x1b[0m (one tiny turn per executor)…`);
+    const turns = await liveTurnCheck(config, { ids: execIds, env });
+    for (const t of turns) {
+      const mark = t.ok ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
+      console.log(`  ${mark} ${t.id}\n      ${t.detail}`);
+      if (!t.ok && t.id.startsWith("codex") && /newer version of Codex|not supported when using Codex/i.test(t.detail)) {
+        console.log(`      \x1b[2mfix: update the Codex app, or drop the codex seat, or use an API key (openai-api / github / openrouter).\x1b[0m`);
+      }
+    }
+  }
+
   console.log("");
   if (fillable.length < 2) {
     console.log(`Only ${fillable.length}/${seats.length} seats can be filled — you need at least 2. Add a reachable model to a seat's chain (see .quorum/config.yaml) or run \`quorum init\`.`);
