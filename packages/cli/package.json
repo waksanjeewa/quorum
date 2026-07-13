@@ -20,7 +20,7 @@
     "url": "https://github.com/waksanjeewa/quorum.git"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node ../../scripts/bundle-cli.mjs",
     "bundle": "node ../../scripts/bundle-cli.mjs",
     "prepack": "node ../../scripts/bundle-cli.mjs"
   },
