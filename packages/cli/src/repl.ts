@@ -27,6 +27,32 @@ const fmtElapsed = (ms: number): string => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 };
 
+/** Pretty model id: bare claude/codex are the account-default model. */
+const prettyModel = (m: string): string => (m === "claude" || m === "codex" ? `${m} ${C.dim("(account default)")}` : m);
+
+/** Answer a question about Quorum's OWN setup directly from config — no roundtable, no guessing. */
+function answerAboutConfig(config: {
+  seats: Record<string, { chain: string[] }>;
+  budgets?: { maxTurnsPerStage?: number; maxCostUsd?: number; wallClockMax?: string };
+}): string {
+  const lines: string[] = [`  ${C.bold("Here's your table right now")} ${C.dim("(from .quorum/config.yaml):")}`];
+  for (const [seat, s] of Object.entries(config.seats)) {
+    const chain = s.chain.map((m, i) => (i === 0 ? C.cyan(prettyModel(m)) : C.dim(prettyModel(m)))).join(C.dim(" → "));
+    lines.push(`    ${C.brand(seat.padEnd(9))} ${chain || C.dim("(none)")}`);
+  }
+  const b = config.budgets ?? {};
+  const budget = [
+    b.maxTurnsPerStage ? `${b.maxTurnsPerStage} turns/stage` : "",
+    b.maxCostUsd != null ? `max $${b.maxCostUsd}` : "",
+    b.wallClockMax ? `max ${b.wallClockMax}` : "",
+  ].filter(Boolean).join(" · ");
+  if (budget) lines.push(`    ${C.dim("budgets".padEnd(9))} ${C.dim(budget)}`);
+  const unique = new Set(Object.values(config.seats).flatMap((s) => s.chain));
+  if (unique.size === 1) lines.push(`  ${C.dim("All seats use one model — add others with /models for real multi-model debate.")}`);
+  lines.push(`  ${C.dim("The first model in each chain leads; the rest are failover. Change with /models · /doctor (what's reachable) · /agents (live) · dashboard ⚙ Settings.")}`);
+  return lines.join("\n");
+}
+
 /** The interactive Quorum shell: stay inside `quorum`, drive it with `/` commands. */
 export async function repl(projectRoot: string): Promise<void> {
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: PROMPT });
@@ -134,6 +160,11 @@ export async function repl(projectRoot: string): Promise<void> {
       if (decision?.intent === "chat") {
         stopSpinner();
         printAbove(`  ${C.cyan(decision.reply ?? "Hi!")}`);
+        return;
+      }
+      if (decision?.intent === "meta") {
+        stopSpinner();
+        printAbove(answerAboutConfig(config));
         return;
       }
 
@@ -269,6 +300,13 @@ export async function repl(projectRoot: string): Promise<void> {
           console.log(`  Unknown command: /${cmd}  (try /help)`);
           return;
       }
+    }
+
+    // A question about Quorum's OWN setup ("what models are we using?") → answer from config
+    // directly, so it never confuses the roundtable. Works whether or not a session is running.
+    if (quickTriage(text)?.intent === "meta") {
+      printAbove(answerAboutConfig(await loadConfig(projectRoot)));
+      return;
     }
 
     // Plain text: inject while running, otherwise treat as a new goal.

@@ -17,6 +17,15 @@ describe("quickTriage (instant, no model call)", () => {
     expect(quickTriage("what can you do?")).toBeNull();
     expect(quickTriage("the tests are flaky")).toBeNull();
   });
+  it("flags questions about Quorum's own config as meta (answered from local state)", () => {
+    for (const q of ["what models are we using now?", "which models are configured?", "show my config", "what are my seats?", "what settings do we have", "am I logged in?"]) {
+      expect(quickTriage(q)?.intent).toBe("meta");
+    }
+  });
+  it("does not mistake build goals that mention config words for meta", () => {
+    expect(quickTriage("build a settings page")?.intent).toBe("build");
+    expect(quickTriage("add a model picker to the app")?.intent).toBe("build");
+  });
 });
 
 const runner = (content: string): SeatRunner => ({ id: "m", async takeTurn() { return { status: "ok", content }; } });
