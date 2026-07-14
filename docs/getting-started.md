@@ -58,6 +58,8 @@ quorum
 The first run drops you straight into the model picker:
 
 - Logged-in tools (Claude, Codex, Ollama) are detected automatically — just pick their numbers.
+- When you pick **Ollama**, Quorum lists the local models from `ollama serve` / `ollama list`;
+  if Ollama is offline, you can still type any model name you already pulled.
 - For API providers (OpenRouter/OpenAI/Anthropic), paste your key once — it's stored in your
   **OS Keychain**, never in a file — then pick the exact model from the live catalog
   (free models listed first and flagged).

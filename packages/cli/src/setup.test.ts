@@ -100,13 +100,26 @@ describe("runSetup (interactive flow)", () => {
       ["codex", { ok: true, canExecute: true }],
       ["ollama/llama3", { ok: true, canExecute: false }],
     ]);
+  const fetchOllamaModels = async (): Promise<string[]> => ["llama3", "qwen2.5:latest"];
 
   it("writes a config from a 1,2,3 selection", async () => {
-    await runSetup(dir, fakeRl(["1,2,3"]), { detect });
+    await runSetup(dir, fakeRl(["1,2,3", "", "", ""]), { detect, fetchOllamaModels });
     const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
     expect(cfg.seats.proposer?.chain).toContain("claude");
     expect(cfg.seats.critic?.chain).toContain("codex");
     expect(Object.values(cfg.seats).every((s) => s.chain.includes("ollama/llama3"))).toBe(true);
+  });
+
+  it("lets the user pick the specific local Ollama model", async () => {
+    await runSetup(dir, fakeRl(["3", "2"]), { detect, fetchOllamaModels });
+    const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
+    expect(Object.values(cfg.seats).every((s) => s.chain.length === 1 && s.chain[0] === "ollama/qwen2.5:latest")).toBe(true);
+  });
+
+  it("lets the user type an Ollama model when the local catalog is unavailable", async () => {
+    await runSetup(dir, fakeRl(["3", "llama3.2:latest"]), { detect, fetchOllamaModels: async () => [] });
+    const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
+    expect(cfg.seats.proposer?.chain).toEqual(["ollama/llama3.2:latest"]);
   });
 
   it("staffs all three seats with a single picked model", async () => {
@@ -135,7 +148,7 @@ describe("runSetup (interactive flow)", () => {
   });
 
   it("/frugal setup lets the user choose free draft and paid verifier subsets", async () => {
-    await runFrugalSetup(dir, fakeRl(["1,2,3", "", "", "2"]), { detect });
+    await runFrugalSetup(dir, fakeRl(["1,2,3", "", "", "1", "2"]), { detect, fetchOllamaModels: async () => ["llama3"] });
     const cfg = parseSessionConfig(parseYaml(await readFile(join(dir, ".quorum", "config.yaml"), "utf8")));
     expect(cfg.seats.proposer?.chain).toEqual(["ollama/llama3", "codex"]);
     expect(cfg.seats.critic?.chain).toEqual(["codex", "ollama/llama3"]);

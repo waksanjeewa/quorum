@@ -7,5 +7,5 @@ export { buildAdapterRegistry, buildExecutorFactory, buildTriageRunner, buildRev
 export { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
 export { doctorReport, liveTurnCheck, type SeatCheck, type TurnCheck } from "./doctor.js";
 export { setSecret, getSecret, deleteSecret, keychainAvailable, knownKeyEnvs, resolveSecretsEnv } from "./secrets.js";
-export { MODEL_CATALOG, configToYaml, keyStatus, type StructuredConfig } from "./settings.js";
+export { MODEL_CATALOG, catalogWithLocalOllamaModels, configToYaml, fetchOllamaModelNames, keyStatus, type StructuredConfig } from "./settings.js";
 export { PauseGate, gatedRunner } from "./pause-gate.js";

@@ -8,7 +8,26 @@ import { getSecret, knownKeyEnvs } from "./secrets.js";
  *  - "api": needs an API key (stored in the Keychain)
  * `id` builds the config model id: login → bare or `id/<model>`; local/api → `prefix<model>`.
  */
-export const MODEL_CATALOG = {
+export interface CatalogProvider {
+  id: string;
+  label: string;
+  kind: "login" | "local" | "api";
+  models: string[];
+  canExecute?: boolean;
+  loginCmd?: string;
+  logoutCmd?: string;
+  prefix?: string;
+  aggregator?: boolean;
+  keyEnv?: string;
+  baseUrl?: string;
+  fetchModels?: boolean;
+}
+
+export interface ModelCatalog {
+  providers: CatalogProvider[];
+}
+
+export const MODEL_CATALOG: ModelCatalog = {
   providers: [
     { id: "claude", label: "Claude", kind: "login", canExecute: true, loginCmd: "claude login", logoutCmd: "claude logout", models: ["", "claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"] },
     { id: "codex", label: "Codex (OpenAI)", kind: "login", canExecute: true, loginCmd: "codex login", logoutCmd: "codex logout", models: ["", "gpt-5.5", "gpt-5"] },
@@ -23,7 +42,40 @@ export const MODEL_CATALOG = {
     { id: "anthropic-api", label: "Anthropic API", kind: "api", prefix: "anthropic-api/", keyEnv: "ANTHROPIC_API_KEY", models: ["claude-opus-4-8", "claude-sonnet-5"] },
     { id: "gemini-api", label: "Gemini API", kind: "api", prefix: "gemini-api/", keyEnv: "GEMINI_API_KEY", models: ["gemini-2.5-pro", "gemini-2.5-flash"] },
   ],
-} as const;
+};
+
+/** Fetch locally installed Ollama model names from `ollama serve` (`/api/tags`). */
+export async function fetchOllamaModelNames(fetchImpl: typeof fetch = fetch): Promise<string[]> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 500);
+  try {
+    const res = await fetchImpl("http://127.0.0.1:11434/api/tags", { signal: ac.signal });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { models?: Array<{ name?: unknown; model?: unknown }> };
+    return [
+      ...new Set(
+        (data.models ?? [])
+          .map((m) => (typeof m.name === "string" ? m.name : typeof m.model === "string" ? m.model : ""))
+          .filter(Boolean),
+      ),
+    ].sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Dashboard catalog enriched with installed Ollama models when available. */
+export async function catalogWithLocalOllamaModels(fetchImpl: typeof fetch = fetch): Promise<ModelCatalog> {
+  const local = await fetchOllamaModelNames(fetchImpl);
+  if (local.length === 0) return MODEL_CATALOG;
+  return {
+    providers: MODEL_CATALOG.providers.map((p) =>
+      p.id === "ollama" ? { ...p, models: [...new Set([...local, ...p.models])] } : { ...p, models: [...p.models] },
+    ),
+  };
+}
 
 export interface StructuredConfig {
   seats: Record<string, { chain: string[] }>;

@@ -107,6 +107,7 @@ claude login      # for a `claude` seat (Claude Max/Pro)
 codex login       # for a `codex` seat (ChatGPT Plus/Pro)
 # optional: export OPENROUTER_API_KEY=...   for OpenRouter (free & paid models)
 # optional: ollama serve                    for a free local fallback
+# optional: ollama pull llama3.2            # Quorum will list pulled Ollama models
 ```
 
 **Then just run `quorum`** — it drops you into an interactive shell (no config files to edit):

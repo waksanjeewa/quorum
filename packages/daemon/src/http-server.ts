@@ -9,7 +9,7 @@ import { buildTriageRunner } from "./registry.js";
 import { loadConfig, DEFAULT_CONFIG_YAML } from "./config.js";
 import { doctorReport } from "./doctor.js";
 import { setSecret, getSecret, deleteSecret, keychainAvailable } from "./secrets.js";
-import { configToYaml, keyStatus, MODEL_CATALOG } from "./settings.js";
+import { catalogWithLocalOllamaModels, configToYaml, keyStatus } from "./settings.js";
 import type { RunningSession } from "./session-runner.js";
 
 export interface HttpServerOpts extends DaemonOpts {
@@ -131,7 +131,7 @@ export class QuorumHttpServer {
           providers: config.providers,
           execution: config.execution ?? { parallel: true, subagents: true },
           doctor,
-          catalog: MODEL_CATALOG,
+          catalog: await catalogWithLocalOllamaModels(),
           keychainAvailable: keychainAvailable(),
           providerKeys, // which key envs already have a value
         });

@@ -1,7 +1,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Interface as Readline } from "node:readline";
-import { doctorReport } from "@quorum/daemon";
+import { doctorReport, fetchOllamaModelNames } from "@quorum/daemon";
 import { parseSessionConfig } from "@quorum/core";
 import { setSecret } from "./keychain.js";
 import { C } from "./theme.js";
@@ -86,6 +86,7 @@ const ask = (rl: Readline, q: string): Promise<string> =>
 
 export type DetectFn = () => Promise<Map<string, { ok: boolean; canExecute: boolean }>>;
 export type FetchModelsFn = (baseUrl: string, key: string) => Promise<Array<{ id: string; free: boolean }>>;
+export type FetchOllamaModelsFn = () => Promise<string[]>;
 
 async function defaultDetect(): Promise<Map<string, { ok: boolean; canExecute: boolean }>> {
   const probe = parseSessionConfig({
@@ -119,6 +120,24 @@ async function pickModel(rl: Readline, models: Array<{ id: string; free: boolean
   const n = Number(ans);
   if (Number.isInteger(n) && n >= 1 && n <= sorted.length) return sorted[n - 1]!.id;
   return ans; // typed a model id directly
+}
+
+async function pickOllamaModel(rl: Readline, availableModels: string[]): Promise<string> {
+  const models = [...new Set(availableModels.map((m) => m.replace(/^ollama\//, "")).filter(Boolean))];
+  const fallback = models[0] ?? "llama3";
+  console.log(`\n  Ollama — which local model?`);
+  if (models.length === 0) {
+    console.log(`  ${C.dim("Ollama is not reachable yet, or has no pulled models. Type any model name you've pulled.")}`);
+    console.log(`  ${C.dim("Tip: run `ollama serve` and `ollama pull llama3.2` to make it appear automatically.")}`);
+    const typed = await ask(rl, `  Model [${fallback}] : `);
+    return `ollama/${(typed || fallback).replace(/^ollama\//, "")}`;
+  }
+  models.forEach((m, i) => console.log(`    ${C.dim(`[${i + 1}]`)} ${m}${C.green(" (free · local)")}`));
+  const ans = await ask(rl, `  Pick a number, or type any Ollama model id [${fallback}] : `);
+  if (!ans) return `ollama/${fallback}`;
+  const n = Number(ans);
+  if (Number.isInteger(n) && n >= 1 && n <= models.length) return `ollama/${models[n - 1]!}`;
+  return `ollama/${ans.replace(/^ollama\//, "")}`;
 }
 
 /** Auto-pick up to 3 distinct models to spread across the three seats: a free one to draft, then
@@ -210,11 +229,12 @@ const API_PROVIDERS: Record<string, ApiProvider> = {
 export async function runSetup(
   projectRoot: string,
   rl: Readline,
-  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn; frugalMode?: boolean } = {},
+  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn; fetchOllamaModels?: FetchOllamaModelsFn; frugalMode?: boolean } = {},
 ): Promise<void> {
   console.log(`\n${C.bold("Set up your models.")} Checking what you're logged into…\n`);
   const status = await (opts.detect ?? defaultDetect)();
   const fetchModels = opts.fetchModels ?? defaultFetchModels;
+  const fetchOllamaModels = opts.fetchOllamaModels ?? fetchOllamaModelNames;
 
   const line = (id: string, label: string): string => {
     const r = status.get(id);
@@ -242,7 +262,10 @@ export async function runSetup(
 
   if (nums.has("1")) models.push(await askModel(rl, "Claude", ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"], "claude"));
   if (nums.has("2")) models.push(await askModel(rl, "Codex", ["gpt-5.5", "gpt-5"], "codex"));
-  if (nums.has("3")) models.push("ollama/llama3");
+  if (nums.has("3")) {
+    const local = await fetchOllamaModels().catch(() => []);
+    models.push(await pickOllamaModel(rl, local));
+  }
 
   for (const [key, p] of Object.entries(API_PROVIDERS)) {
     if (!nums.has(key)) continue;
@@ -315,7 +338,7 @@ export async function runSetup(
 export async function runFrugalSetup(
   projectRoot: string,
   rl: Readline,
-  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn } = {},
+  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn; fetchOllamaModels?: FetchOllamaModelsFn } = {},
 ): Promise<void> {
   console.log(`\n${C.bold("Frugal mode.")} Choose free models for drafting and paid/subscription models for judgement.`);
   await runSetup(projectRoot, rl, { ...opts, frugalMode: true });
