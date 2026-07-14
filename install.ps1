@@ -23,8 +23,16 @@ if ($env:QUORUM_SKIP_SYSTEM_DEPS -eq "1") { $SkipSystemDeps = $true }
 function Say([string]$Message) { Write-Host $Message }
 function Warn([string]$Message) { Write-Warning $Message }
 function Die([string]$Message) { Write-Error $Message; exit 1 }
-function Have([string]$Command) { [bool](Get-Command $Command -ErrorAction SilentlyContinue) }
 function Is-Windows { return [System.IO.Path]::DirectorySeparatorChar -eq "\" }
+function Tool([string]$Command) {
+  if (Is-Windows) {
+    foreach ($candidate in @("$Command.cmd", "$Command.exe", $Command)) {
+      if (Get-Command $candidate -ErrorAction SilentlyContinue) { return $candidate }
+    }
+  }
+  return $Command
+}
+function Have([string]$Command) { [bool](Get-Command (Tool $Command) -ErrorAction SilentlyContinue) }
 function Add-PathEntries([System.Collections.Generic.List[string]]$Parts, [string]$Value) {
   if ([string]::IsNullOrWhiteSpace($Value)) { return }
   foreach ($part in ($Value -split [Regex]::Escape([string][IO.Path]::PathSeparator))) {
@@ -110,14 +118,14 @@ function Refresh-ProcessPath {
 }
 function HavePython { (Have "python") -or (Have "py") }
 function PythonVersion {
-  if (Have "python") { return (& python --version) -replace '^Python ', '' }
-  if (Have "py") { return (& py -3 --version) -replace '^Python ', '' }
+  if (Have "python") { return (& (Tool "python") --version) -replace '^Python ', '' }
+  if (Have "py") { return (& (Tool "py") -3 --version) -replace '^Python ', '' }
   return "not found"
 }
 
 function NodeMajor {
   if (-not (Have "node")) { return 0 }
-  try { return [int]((& node -p "Number(process.versions.node.split('.')[0])").Trim()) } catch { return 0 }
+  try { return [int]((& (Tool "node") -p "Number(process.versions.node.split('.')[0])").Trim()) } catch { return 0 }
 }
 
 function NeedsNode {
@@ -132,7 +140,7 @@ function Install-WithWinget([string[]]$Ids) {
   }
   foreach ($id in $Ids) {
     Say "Installing $id with winget..."
-    & winget install --id $id --exact --accept-source-agreements --accept-package-agreements
+    & (Tool "winget") install --id $id --exact --accept-source-agreements --accept-package-agreements
     if ($LASTEXITCODE -ne 0) {
       Warn "winget could not install $id. If it is already installed, open a new PowerShell and rerun install.ps1."
     }
@@ -158,7 +166,7 @@ function Verify-Prerequisites {
   Refresh-ProcessPath
   if (-not (Have "git")) { Die "git is required. Install Git for Windows, then rerun. If winget just installed it, open a new PowerShell window and rerun this installer." }
   if (-not (Have "node")) { Die "Node.js >=20 is required. Install the current Node LTS from https://nodejs.org, then rerun. If winget just installed it, open a new PowerShell window and rerun this installer." }
-  if ((NodeMajor) -lt 20) { Die "Node.js >=20 is required; found $(& node -v). Install a current Node LTS, then rerun." }
+  if ((NodeMajor) -lt 20) { Die "Node.js >=20 is required; found $(& (Tool "node") -v). Install a current Node LTS, then rerun." }
   if (-not (Have "npm")) { Die "npm is required and should come with Node.js." }
   if (-not (HavePython)) { Die "Python 3 is required for common project tasks. Install Python 3, then rerun." }
 }
@@ -167,18 +175,22 @@ function Ensure-Pnpm {
   $null = Ensure-NpmGlobalBinOnPath
   if (Have "pnpm") { return }
 
-  if (Have "corepack") {
+  if ((-not (Is-Windows)) -and (Have "corepack")) {
     try {
-      & corepack enable
-      & corepack prepare "pnpm@$PnpmVersion" --activate
+      & (Tool "corepack") enable
+      & (Tool "corepack") prepare "pnpm@$PnpmVersion" --activate
     } catch {
       Warn "corepack could not activate pnpm; falling back to npm install -g."
     }
+  } elseif ((Is-Windows) -and (Have "corepack")) {
+    # `corepack enable` writes shims into C:\Program Files\nodejs and commonly fails without
+    # elevation. A user-level npm global install avoids the admin prompt and PowerShell .ps1 policy.
+    Say "Installing pnpm with npm on Windows (avoids system-level Corepack shims)."
   }
 
   if (-not (Have "pnpm")) {
     Say "Installing pnpm@$PnpmVersion with npm..."
-    & npm install -g "pnpm@$PnpmVersion"
+    & (Tool "npm") install -g "pnpm@$PnpmVersion"
     $null = Ensure-NpmGlobalBinOnPath -PersistUser
     if ($LASTEXITCODE -ne 0) { Die "npm could not install pnpm." }
   }
@@ -187,7 +199,7 @@ function Ensure-Pnpm {
 function Get-NpmGlobalBin {
   if (-not (Have "npm")) { return $null }
   try {
-    $prefix = (& npm prefix -g).Trim()
+    $prefix = (& (Tool "npm") prefix -g).Trim()
     if ([string]::IsNullOrWhiteSpace($prefix)) { return $null }
     if (Is-Windows) { return $prefix }
     return Join-Path $prefix "bin"
@@ -203,6 +215,18 @@ function Ensure-NpmGlobalBinOnPath([switch]$PersistUser) {
   return $bin
 }
 
+function Remove-PowerShellShim([string]$Name) {
+  if (-not (Is-Windows)) { return }
+  $npmBin = Ensure-NpmGlobalBinOnPath -PersistUser
+  if ([string]::IsNullOrWhiteSpace($npmBin)) { return }
+  $ps1 = Join-Path $npmBin "$Name.ps1"
+  $cmd = Join-Path $npmBin "$Name.cmd"
+  if ((Test-Path $ps1) -and (Test-Path $cmd)) {
+    Remove-Item -Force $ps1
+    Say "Removed $ps1 so PowerShell can launch $Name through $Name.cmd under restricted execution policy."
+  }
+}
+
 function Verify-QuorumCommand {
   $npmBin = if (Is-Windows) {
     Ensure-NpmGlobalBinOnPath -PersistUser
@@ -211,7 +235,7 @@ function Verify-QuorumCommand {
   }
 
   if (Have "quorum") {
-    $output = & quorum --version 2>&1
+    $output = & (Tool "quorum") --version 2>&1
     $exitCode = $LASTEXITCODE
     $version = (($output | Out-String).Trim())
     if ($null -eq $exitCode -or $exitCode -eq 0) {
@@ -245,10 +269,10 @@ Verify-Prerequisites
 Ensure-Pnpm
 
 Say "Prerequisites:"
-Say "  node $(& node -v)"
-Say "  npm $(& npm -v)"
-Say "  pnpm $(& pnpm -v)"
-Say "  git $((& git --version) -replace '^git version ', '')"
+Say "  node $(& (Tool "node") -v)"
+Say "  npm $(& (Tool "npm") -v)"
+Say "  pnpm $(& (Tool "pnpm") -v)"
+Say "  git $((& (Tool "git") --version) -replace '^git version ', '')"
 Say "  python $(PythonVersion)"
 if (Is-Windows) {
   Say "  Windows Credential Manager available (API-key storage)"
@@ -258,25 +282,25 @@ if (Is-Windows) {
 
 if (Test-Path (Join-Path $Dir ".git")) {
   Say "Updating $Dir..."
-  & git -C $Dir pull --ff-only
+  & (Tool "git") -C $Dir pull --ff-only
   if ($LASTEXITCODE -ne 0) { Die "git pull failed for $Dir." }
 } else {
   Say "Cloning into $Dir..."
-  & git clone $Repo $Dir
+  & (Tool "git") clone $Repo $Dir
   if ($LASTEXITCODE -ne 0) { Die "git clone failed." }
 }
 
 Push-Location $Dir
 try {
-  & pnpm install
+  & (Tool "pnpm") install
   if ($LASTEXITCODE -ne 0) { Die "pnpm install failed." }
-  & pnpm build
+  & (Tool "pnpm") build
   if ($LASTEXITCODE -ne 0) { Die "pnpm build failed." }
-  & pnpm --filter quorum exec npm link
+  & (Tool "pnpm") --filter quorum exec (Tool "npm") link
   if ($LASTEXITCODE -ne 0) {
     Push-Location (Join-Path $Dir "packages\cli")
     try {
-      & npm link
+      & (Tool "npm") link
       if ($LASTEXITCODE -ne 0) { Die "npm link failed." }
     } finally {
       Pop-Location
@@ -287,6 +311,7 @@ try {
 }
 
 Write-Host ""
+Remove-PowerShellShim "quorum"
 Verify-QuorumCommand
 Say "✓ Installed. Next:"
 Say "    quorum doctor          # see which models you're logged into"

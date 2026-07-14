@@ -26,6 +26,8 @@
   so a just-installed Git for Windows can be used without opening a new terminal first.
 - Windows installer now checks npm's global command folder after linking Quorum and verifies
   `quorum --version` before printing success.
+- Windows installer now avoids Node's PowerShell `.ps1` shims on restricted systems by using
+  `.cmd`/`.exe` tools directly and removing Quorum's generated `quorum.ps1` shim after linking.
 - Selecting Ollama now lets you choose the specific local free model instead of silently using
   `ollama/llama3`; dashboard Settings also lists installed Ollama models when reachable.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly
