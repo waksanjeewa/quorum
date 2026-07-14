@@ -67,6 +67,7 @@ body[data-view="live"] .goalbar { display:flex; }
 /* ── Compose / landing (no active session) ───────────────────────── */
 #compose { display:none; flex:1; overflow:auto; background:radial-gradient(60% 45% at 50% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent); }
 body[data-view="compose"] #compose { display:block; }
+body:not([data-view]) #compose { display:block; }
 main { display:none; flex:1; min-height:0; grid-template-columns:280px 1fr; grid-template-rows:1fr auto; }
 body[data-view="live"] main { display:grid; }
 .composeWrap { max-width:760px; margin:0 auto; padding:44px 20px; }
@@ -126,6 +127,7 @@ form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--line
 input { flex:1; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); }
 .hint { font-size:11px; color:var(--muted); }
 body[data-view="compose"] .liveonly { display:none; }
+body:not([data-view]) .liveonly { display:none; }
 
 #settingsPanel { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; }
 #settingsPanel.open { display:flex; align-items:center; justify-content:center; }
@@ -177,8 +179,49 @@ const el = (tag, props, ...kids) => { const e = document.createElement(tag); Obj
 const isFreeId = (id) => id.startsWith("ollama/") || /:free$/i.test(id);
 const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
 const uniq = xs => [...new Set((xs||[]).filter(Boolean))];
-const parseModelList = text => uniq(String(text||"").split(/[,\n]+/).map(x=>x.trim()));
-const allSeatModels = seats => uniq(Object.values(seats||{}).flatMap(s => s.chain || []));
+const fallbackSettings = () => ({
+  seats:{ proposer:{chain:[]}, critic:{chain:[]}, arbiter:{chain:[]} },
+  budgets:{ maxTurnsPerStage:12 },
+  providers:{},
+  execution:{ parallel:true, subagents:true },
+  catalog:{ providers:[] },
+  doctor:[],
+  providerKeys:{},
+  keychainAvailable:false
+});
+const asObj = x => (x && typeof x === "object") ? x : {};
+const chainOf = seat => Array.isArray(seat && seat.chain) ? seat.chain.filter(x=>typeof x === "string") : [];
+function normalizeSettings(raw) {
+  const base = fallbackSettings();
+  const r = asObj(raw);
+  const seatsRaw = asObj(r.seats);
+  const seats = {};
+  for (const [name, seat] of Object.entries(seatsRaw)) seats[name] = { chain: chainOf(seat) };
+  for (const [name, seat] of Object.entries(base.seats)) if (!seats[name]) seats[name] = seat;
+  const catalogRaw = asObj(r.catalog);
+  const providers = Array.isArray(catalogRaw.providers) ? catalogRaw.providers.map(p => {
+    p = asObj(p);
+    return {
+      ...p,
+      id: typeof p.id === "string" ? p.id : "",
+      label: typeof p.label === "string" ? p.label : String(p.id || "Model"),
+      kind: typeof p.kind === "string" ? p.kind : "api",
+      models: Array.isArray(p.models) ? p.models.filter(m=>typeof m === "string") : [],
+    };
+  }).filter(p => p.id) : [];
+  return {
+    seats,
+    budgets: { ...base.budgets, ...asObj(r.budgets) },
+    providers: asObj(r.providers),
+    execution: { ...base.execution, ...asObj(r.execution) },
+    catalog: { providers },
+    doctor: Array.isArray(r.doctor) ? r.doctor : [],
+    providerKeys: asObj(r.providerKeys),
+    keychainAvailable: Boolean(r.keychainAvailable),
+  };
+}
+const parseModelList = text => uniq(String(text||"").split(/[,\\n]+/).map(x=>x.trim()));
+const allSeatModels = seats => uniq(Object.values(seats||{}).flatMap(chainOf));
 const splitFrugalModels = seats => {
   const ids = allSeatModels(seats);
   return { free: ids.filter(isFreeId), paid: ids.filter(id => !isFreeId(id)) };
@@ -201,7 +244,30 @@ let activeStatus = null;
 let activityNote = "";
 const fmtElapsed = ms => { const s=Math.floor((ms||0)/1000); return s<60 ? s+"s" : Math.floor(s/60)+"m "+(s%60)+"s"; };
 
-async function loadSettings() { settings = await (await api("/settings")).json(); return settings; }
+async function loadSettings() {
+  const res = await api("/settings");
+  if (!res.ok) throw new Error("settings " + res.status);
+  settings = normalizeSettings(await res.json());
+  return settings;
+}
+function showBootProblem(err) {
+  settings = normalizeSettings(settings);
+  document.body.dataset.view = "compose";
+  stageEl.textContent = "new roundtable";
+  try { renderCompose(); } catch {}
+  const wrap = el("div");
+  wrap.append(
+    el("div", { className:"who", textContent:"Dashboard needs a refresh" }),
+    el("div", { textContent:"I couldn't load the local dashboard data yet. The page is still usable; try Refresh, or keep typing a goal below." }),
+  );
+  const retry = el("button", { textContent:"Retry now" });
+  retry.style.marginTop = "8px";
+  retry.onclick = () => { $("composeMsg").className = ""; boot(); };
+  wrap.append(retry, el("span", { className:"hint", textContent:"  " + (err && err.message ? err.message : String(err || "")) }));
+  showComposeMsg(wrap, "err");
+}
+window.addEventListener("error", e => showBootProblem(e.error || e.message));
+window.addEventListener("unhandledrejection", e => showBootProblem(e.reason));
 
 // ── Live transcript view ────────────────────────────────────────────
 function setThinking(text) {
@@ -267,9 +333,12 @@ function renderSessions(list) {
   });
 }
 async function refreshSessions() {
-  const body = await (await api("/sessions")).json();
-  renderSessions(body.sessions || []);
-  return body.sessions || [];
+  const res = await api("/sessions");
+  if (!res.ok) throw new Error("sessions " + res.status);
+  const body = await res.json();
+  const list = Array.isArray(body.sessions) ? body.sessions : [];
+  renderSessions(list);
+  return list;
 }
 
 async function refreshSeats() {
@@ -310,19 +379,20 @@ function tierScore(id, p) {
   return exec ? 0 : (free ? 2 : 1);                     // Quality: executor/paid first
 }
 function renderCompose() {
-  const seats = (settings && settings.seats) || {};
+  settings = normalizeSettings(settings);
+  const seats = settings.seats || {};
   const chips = $("mchips"); chips.innerHTML = "";
   for (const [seat, s] of Object.entries(seats)) {
-    const lead = s.chain[0] || "account default";
+    const lead = chainOf(s)[0] || "account default";
     const c = el("div", {className:"mchip"});
     c.append(el("span", {className:"role", textContent: seat + ":"}), el("span", {textContent: lead}));
     if (isExecId(lead)) c.append(el("span", {className:"badge", textContent:"builds"}));
     chips.append(c);
   }
   chips.append(el("button", {textContent:"⚙ change models", onclick: openSettings}));
-  const arb = seats.arbiter && seats.arbiter.chain[0];
+  const arb = seats.arbiter && chainOf(seats.arbiter)[0];
   $("fuse").innerHTML = "Converged by <b>" + (arb || "arbiter") + "</b> — the arbiter weighs the debate and calls the result.";
-  const canBuild = Object.values(seats).some(s => s.chain.some(isExecId));
+  const canBuild = Object.values(seats).some(s => chainOf(s).some(isExecId));
   $("composeHint").textContent = canBuild ? "Plans and builds — Claude/Codex present." : "Plans only — add Claude or Codex in Settings to build.";
 }
 function showCompose() {
@@ -344,15 +414,17 @@ function showComposeMsg(content, kind) {
 }
 // A support answer built from local settings — shown when the user asks about the setup.
 function settingsHelpNode() {
+  settings = normalizeSettings(settings);
   const wrap = el("div");
   wrap.append(el("div", { className:"who", textContent:"Your setup" }));
   const seats = (settings && settings.seats) || {};
   for (const [seat, s] of Object.entries(seats)) {
-    const rest = s.chain.length > 1 ? "  → " + s.chain.slice(1).join(" → ") : "";
-    wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent: seat }), el("span", { textContent: (s.chain[0] || "account default") + rest })));
+    const chain = chainOf(s);
+    const rest = chain.length > 1 ? "  → " + chain.slice(1).join(" → ") : "";
+    wrap.append(el("div", { className:"srow" }, el("span", { className:"srole", textContent: seat }), el("span", { textContent: (chain[0] || "account default") + rest })));
   }
   const provs = new Set();
-  for (const s of Object.values(seats)) for (const m of s.chain) {
+  for (const s of Object.values(seats)) for (const m of chainOf(s)) {
     if (m === "claude" || m.startsWith("claude/")) provs.add("Claude (login)");
     else if (m === "codex" || m.startsWith("codex/")) provs.add("Codex (login)");
     else if (m.startsWith("ollama/")) provs.add("Ollama (local)");
@@ -402,16 +474,18 @@ async function startFusion() {
 
 // ── Boot ────────────────────────────────────────────────────────────
 async function boot() {
-  try { await loadSettings(); } catch (e) { settings = { seats:{}, budgets:{}, catalog:{providers:[]} }; }
+  let bootErr = null;
+  try { await loadSettings(); } catch (e) { settings = normalizeSettings(null); bootErr = e; }
   let latest = null;
-  try { const sessions = await refreshSessions(); latest = sessions[sessions.length-1]; } catch (e) {}
-  if (!latest) { showCompose(); return; }
-  showLive(latest);
+  try { const sessions = await refreshSessions(); latest = sessions[sessions.length-1]; } catch (e) { bootErr = bootErr || e; }
+  if (!latest) { showCompose(); if (bootErr) showBootProblem(bootErr); return; }
+  try { showLive(latest); } catch (err) { showBootProblem(err); }
 }
 
 // compose interactions
 $("presets").addEventListener("click", async e => {
   const b = e.target.closest(".preset"); if (!b) return;
+  settings = normalizeSettings(settings);
   const p = b.dataset.p;
   if (p === "Custom") { openSettings(); return; }
   preset = p;
@@ -426,7 +500,7 @@ $("presets").addEventListener("click", async e => {
   } else {
     $("composeMsg").className = "";
     for (const s of Object.values(settings.seats)) {
-      s.chain = s.chain.map((id,i)=>({id,i})).sort((a,b)=> tierScore(a.id,p)-tierScore(b.id,p) || a.i-b.i).map(x=>x.id);
+      s.chain = chainOf(s).map((id,i)=>({id,i})).sort((a,b)=> tierScore(a.id,p)-tierScore(b.id,p) || a.i-b.i).map(x=>x.id);
     }
   }
   document.querySelectorAll(".preset").forEach(x => x.classList.toggle("active", x === b));
@@ -435,7 +509,13 @@ $("presets").addEventListener("click", async e => {
 });
 $("startBtn").addEventListener("click", startFusion);
 $("goalInput").addEventListener("keydown", e => { if ((e.metaKey||e.ctrlKey) && e.key === "Enter") startFusion(); });
-$("newBtn").addEventListener("click", async () => { await loadSettings(); $("goalInput").value = ""; document.querySelectorAll(".preset").forEach(x=>x.classList.toggle("active", x.dataset.p===preset)); showCompose(); $("goalInput").focus(); });
+$("newBtn").addEventListener("click", async () => {
+  try { await loadSettings(); } catch (err) { settings = normalizeSettings(settings); }
+  $("goalInput").value = "";
+  document.querySelectorAll(".preset").forEach(x=>x.classList.toggle("active", x.dataset.p===preset));
+  showCompose();
+  $("goalInput").focus();
+});
 
 // live inject box
 $("form").addEventListener("submit", async ev => {
@@ -452,9 +532,10 @@ const panel = $("settingsPanel");
 const cfgMsg = $("cfgMsg");
 const sbody = $("settingsBody");
 let S = null;
-const modelId = (provId, model) => { const p = S.catalog.providers.find(x=>x.id===provId); if(!p) return model; return p.kind==="login" ? (model?provId+"/"+model:provId) : p.prefix+model; };
+const modelId = (provId, model) => { const p = (S.catalog.providers||[]).find(x=>x.id===provId); if(!p) return model; return p.kind==="login" ? (model?provId+"/"+model:provId) : (p.prefix||"")+model; };
 
 function renderSettings() {
+  S = normalizeSettings(S);
   sbody.innerHTML = "";
   const frugal = splitFrugalModels(S.seats);
   const fsec = el("div",{className:"section frugalBox"});
@@ -480,6 +561,7 @@ function renderSettings() {
     const card = el("div", {className:"seatCard"});
     card.append(el("h3", {textContent: seat}));
     card.append(el("div", {className:"sub", textContent:"failover chain — first available model takes the turn"}));
+    s.chain = chainOf(s);
     s.chain.forEach((mid, i) => {
       const item = el("div", {className:"chainItem"});
       item.append(el("span", {className:"mid", textContent: mid || "(account default)"}));
@@ -492,9 +574,9 @@ function renderSettings() {
       card.append(item);
     });
     const provSel = el("select");
-    S.catalog.providers.forEach(p => provSel.append(el("option",{value:p.id, textContent:p.label})));
+    (S.catalog.providers||[]).forEach(p => provSel.append(el("option",{value:p.id, textContent:p.label})));
     const modSel = el("select");
-    const fillModels = () => { modSel.innerHTML=""; const p=S.catalog.providers.find(x=>x.id===provSel.value); (p.models||[]).forEach(m=>modSel.append(el("option",{value:m, textContent: m===""?"account default":m}))); modSel.append(el("option",{value:"__c__", textContent:"other… (type id)"})); };
+    const fillModels = () => { modSel.innerHTML=""; const p=(S.catalog.providers||[]).find(x=>x.id===provSel.value); ((p&&p.models)||[]).forEach(m=>modSel.append(el("option",{value:m, textContent: m===""?"account default":m}))); modSel.append(el("option",{value:"__c__", textContent:"other… (type id)"})); };
     fillModels(); provSel.onchange=fillModels;
     const addBtn = el("button",{textContent:"+ add"});
     addBtn.onclick=()=>{ let m=modSel.value; if(m==="__c__"){ m=prompt("Model id for "+provSel.value+":")||""; if(!m) return; } s.chain.push(modelId(provSel.value,m)); renderSettings(); };
@@ -505,7 +587,7 @@ function renderSettings() {
   const sec = el("div",{className:"section"});
   sec.append(el("h3",{textContent:"Logins & API keys"}));
   const dMap = {}; (S.doctor||[]).forEach(d=>{ if(d.ok) dMap[d.id]=true; if(d.id.indexOf("/")>0) dMap[d.id.split("/")[0]]=dMap[d.id.split("/")[0]]||d.ok; });
-  S.catalog.providers.forEach(p => {
+  (S.catalog.providers||[]).forEach(p => {
     const row = el("div",{className:"keyRow"});
     row.append(el("span",{className:"name", textContent:p.label}));
     if (p.kind==="login") {
@@ -569,8 +651,16 @@ function renderSettings() {
 async function openSettings() {
   cfgMsg.textContent=""; cfgMsg.className="msg"; sbody.textContent="Loading…";
   panel.classList.add("open");
-  S = await (await api("/settings")).json();
-  renderSettings();
+  try {
+    S = await loadSettings();
+    renderSettings();
+  } catch (err) {
+    S = normalizeSettings(S);
+    sbody.textContent = "";
+    cfgMsg.textContent = "Couldn't load settings yet. Check the terminal, then try Refresh/Retry.";
+    cfgMsg.className = "msg err";
+    renderSettings();
+  }
 }
 $("settings").addEventListener("click", openSettings);
 $("cfgClose").addEventListener("click", () => panel.classList.remove("open"));
@@ -585,6 +675,8 @@ $("cfgSave").addEventListener("click", async () => {
 $("pause").addEventListener("click", () => { if(sessionId) api("/sessions/"+sessionId+"/pause","POST").then(refreshSeats); });
 $("resume").addEventListener("click", () => { if(sessionId) api("/sessions/"+sessionId+"/resume","POST").then(refreshSeats); });
 $("stop").addEventListener("click", () => { if(sessionId) api("/sessions/"+sessionId+"/stop","POST").then(refreshSeats); });
+settings = normalizeSettings(null);
+try { renderCompose(); } catch {}
 boot();
 `;
 }
@@ -602,11 +694,11 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>${csp}
 <title>Quorum</title><style>${STYLE}</style></head>
-<body>
+<body data-view="compose">
 <header>
   <h1 class="brand">${logoMark("q-logo-header")}<span>Quorum</span></h1>
   <span class="version">v${APP_VERSION}</span>
-  <span class="stage" id="stage">…</span>
+  <span class="stage" id="stage">new roundtable</span>
   <span class="hint">session <span id="sid">—</span></span>
   <span class="spacer"></span>
   <button id="newBtn">＋ New roundtable</button>

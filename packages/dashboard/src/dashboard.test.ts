@@ -6,6 +6,7 @@ describe("renderDashboard", () => {
 
   it("embeds the token and core UI elements", () => {
     expect(html).toContain("secret-token-123");
+    expect(html).toContain('<body data-view="compose">'); // never boot to a header-only blank shell
     expect(html).toContain('id="feed"');
     expect(html).toContain('id="msg"'); // inject box
     expect(html).toContain('id="stop"'); // STOP button
@@ -65,5 +66,21 @@ describe("renderDashboard", () => {
     expect(html).toContain("Roundtables");
     expect(html).toContain("Activity");
     expect(html).toContain("activitySeat"); // agent/model chips live under Activity
+  });
+
+  it("has a safe dashboard boot path when local API/settings data is unavailable", () => {
+    expect(html).toContain("normalizeSettings");
+    expect(html).toContain("fallbackSettings");
+    expect(html).toContain("showBootProblem");
+    expect(html).toContain("Dashboard needs a refresh");
+    expect(html).toContain("Retry now");
+    expect(html).toContain("body:not([data-view]) #compose");
+    expect(html).toContain("Array.isArray(body.sessions)");
+  });
+
+  it("emits browser-parseable inline JavaScript", () => {
+    const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+    expect(script).toBeTruthy();
+    expect(() => new Function(script)).not.toThrow();
   });
 });
