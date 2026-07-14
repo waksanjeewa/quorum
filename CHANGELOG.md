@@ -16,6 +16,8 @@
   model/activity chips under **Activity**.
 - Frugal mode is now explicit: use `/frugal` in the terminal or the dashboard **Frugal** controls to
   pick free drafting models and paid/subscription verifier models.
+- Changing models from the terminal keeps the existing dashboard port/URL; refresh the same browser
+  tab to see the new settings.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly
   together.
 - Vague first messages ask a clarification question instead of starting the wrong goal; `/goal …`

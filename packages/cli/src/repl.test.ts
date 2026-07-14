@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseSessionConfig } from "@quorum/core";
-import { codexLiveCheckTip, completeSlash, executorIdsForLiveCheck, nextSlashSelection, renderSlashMenu, slashMenuMatches, SLASH_COMMANDS } from "./repl.js";
+import { codexLiveCheckTip, completeSlash, executorIdsForLiveCheck, nextSlashSelection, renderSlashMenu, slashMenuMatches, SLASH_COMMANDS, syncDaemonEnvKeys } from "./repl.js";
 
 describe("interactive slash command menu", () => {
   it("lists all commands when only / is typed", () => {
@@ -64,5 +64,22 @@ describe("in-shell /doctor helpers", () => {
   it("shows actionable Codex guidance for the known model/version failure", () => {
     expect(codexLiveCheckTip("codex", "newer version of Codex required")).toContain("update the Codex app");
     expect(codexLiveCheckTip("claude", "newer version of Codex required")).toBe("");
+  });
+});
+
+describe("dashboard refresh after model setup", () => {
+  it("updates the existing daemon env without requiring a dashboard restart", () => {
+    const calls: Array<[string, string | undefined]> = [];
+    const count = syncDaemonEnvKeys(
+      { setEnvVar: (name, value) => calls.push([name, value]) },
+      { OPENROUTER_API_KEY: "or-key", GROQ_API_KEY: undefined },
+      ["OPENROUTER_API_KEY", "GROQ_API_KEY"],
+    );
+
+    expect(count).toBe(2);
+    expect(calls).toEqual([
+      ["OPENROUTER_API_KEY", "or-key"],
+      ["GROQ_API_KEY", undefined],
+    ]);
   });
 });

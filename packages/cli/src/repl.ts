@@ -50,6 +50,15 @@ export const codexLiveCheckTip = (id: string, detail: string): string =>
     ? "fix: update the Codex app, or drop the codex seat with /models, or use an API key (openai-api / github / openrouter)."
     : "";
 
+export function syncDaemonEnvKeys(
+  daemon: { setEnvVar(name: string, value: string | undefined): void },
+  env: Record<string, string | undefined>,
+  keyNames: string[],
+): number {
+  for (const name of keyNames) daemon.setEnvVar(name, env[name]);
+  return keyNames.length;
+}
+
 export const renderSlashMenu = (matches: Array<[string, string]>, cursorColumn = 0, selectedIndex = 0): string => {
   if (matches.length === 0) return "";
   const w = Math.max(...matches.map(([c]) => c.length));
@@ -208,6 +217,15 @@ export async function repl(projectRoot: string): Promise<void> {
     return dashboardUrl;
   };
 
+  const refreshDashboardConfig = async (): Promise<void> => {
+    if (!server) return;
+    const config = await loadConfig(projectRoot);
+    const keys = knownKeyEnvs(config);
+    const env = await resolveSecretsEnv(keys);
+    syncDaemonEnvKeys(server.daemon, env, keys);
+    info(`models saved. Refresh the dashboard tab — same URL: ${dashboardUrl}`);
+  };
+
   console.log("\n" + quorumLogo() + "\n");
   console.log(HELP + "\n");
 
@@ -347,26 +365,13 @@ export async function repl(projectRoot: string): Promise<void> {
           rl.pause();
           await runSetup(projectRoot, rl);
           rl.resume();
-          // Restart the dashboard so freshly-added keys/models take effect (unless mid-run).
-          if (!running && server) {
-            await server.close();
-            server = undefined;
-            dashboardUrl = "";
-            const url = await ensureServer().catch(() => "");
-            if (url) info(`dashboard: ${url}`);
-          }
+          await refreshDashboardConfig();
           return;
         case "frugal":
           rl.pause();
           await runFrugalSetup(projectRoot, rl);
           rl.resume();
-          if (!running && server) {
-            await server.close();
-            server = undefined;
-            dashboardUrl = "";
-            const url = await ensureServer().catch(() => "");
-            if (url) info(`dashboard: ${url}`);
-          }
+          await refreshDashboardConfig();
           return;
         case "dashboard": {
           const url = await ensureServer().catch(() => "");
