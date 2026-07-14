@@ -18,6 +18,8 @@
   pick free drafting models and paid/subscription verifier models.
 - Changing models from the terminal keeps the existing dashboard port/URL; refresh the same browser
   tab to see the new settings.
+- Dashboard startup is now resilient: it opens to the New roundtable composer immediately, normalizes
+  partial local settings data, and shows an inline retry prompt instead of a header-only/blank body.
 - Selecting Ollama now lets you choose the specific local free model instead of silently using
   `ollama/llama3`; dashboard Settings also lists installed Ollama models when reachable.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly

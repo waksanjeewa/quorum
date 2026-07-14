@@ -4,6 +4,11 @@ Everything lives in one file per project: `.quorum/config.yaml`. You rarely edit
 `/models` in the shell writes it, and the **dashboard ⚙ Settings** panel edits it live (validated
 on save, applies to the next session).
 
+The local dashboard stays on one URL/port for the shell session. After changing models from
+`/models`, `/frugal`, or Settings, refresh the same browser tab to pick up the updated config. If the
+dashboard starts before local settings are ready, it falls back to the New roundtable composer with a
+retry prompt instead of a blank page.
+
 For cost-aware runs, use `/frugal` or the dashboard **Frugal** button. You can explicitly choose
 which free models draft and which paid/subscription models verify.
 

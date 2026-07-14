@@ -53,6 +53,8 @@
   .minirow b{color:var(--fg)} .minirow .badge{margin-left:auto;border:1px solid var(--line);border-radius:999px;padding:1px 7px;font-size:11px;color:var(--accent)}
   .mergebox{display:grid;gap:8px}
   .mergebox div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--muted);font-size:13px}.mergebox b{color:var(--fg)}
+  .dashnote{max-width:840px;margin:26px auto 0;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.28);border-radius:14px;padding:14px 18px;color:var(--muted);text-align:left}
+  .dashnote b{color:var(--fg)}
   section{padding:64px 0;border-top:1px solid var(--line)}
   h2.title{font-size:32px;text-align:center;margin:0 0 8px;letter-spacing:-.01em}
   p.sub{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 40px}
@@ -138,9 +140,9 @@
     <div class="screen">
       <div class="top"><span class="dot g"></span><span class="dot c"></span><span class="dot a"></span></div>
       <h3>2. Watch the dashboard</h3>
-      <div class="minirow"><span class="dot g"></span><b>Roundtable</b><span class="badge">brainstorm</span></div>
+      <div class="minirow"><span class="dot g"></span><b>New roundtable</b><span class="badge">ready</span></div>
       <div class="minirow"><span class="dot c"></span><b>Activity</b><span>codex thinking…</span></div>
-      <div class="minirow"><span class="dot a"></span><b>Seats</b><span>proposer · critic · arbiter</span></div>
+      <div class="minirow"><span class="dot a"></span><b>Settings</b><span>same URL after model changes</span></div>
     </div>
     <div class="screen">
       <div class="top"><span class="dot g"></span><span class="dot c"></span><span class="dot a"></span></div>
@@ -152,6 +154,9 @@
       </div>
     </div>
   </div>
+  <div class="dashnote"><b>Dashboard-first workflow.</b> The local dashboard opens to a usable composer,
+    lists your roundtables, shows live agent activity, and keeps the same URL while you change models.
+    If local settings are still loading, it shows a retry prompt instead of a blank screen.</div>
 </div></div>
 
 <section id="features"><div class="wrap">
@@ -163,7 +168,7 @@
     <div class="card"><div class="ico">🔨</div><h3>It actually builds</h3><p>Plans become code: executors edit files in isolated git worktrees, run your acceptance checks, get reviewed, and merge — in parallel, across independent tasks.</p></div>
     <div class="card"><div class="ico">💸</div><h3>Frugal by default</h3><p>Free models (Ollama, OpenRouter :free) do the bulk drafting; your paid models are spent only on verifying and improving. Hard cost + time caps.</p></div>
     <div class="card"><div class="ico">🔒</div><h3>Local-first &amp; private</h3><p>No server, no accounts, no telemetry. Prompts and transcripts stay on your machine; API keys live in your OS Keychain, never in a file.</p></div>
-    <div class="card"><div class="ico">🧑‍💻</div><h3>You're at the table</h3><p>Watch the debate live in a branded shell or web dashboard, switch roundtables, see active model activity, drop a message in mid-run, tweak models, and hit the big red STOP.</p></div>
+    <div class="card"><div class="ico">🧑‍💻</div><h3>You're at the table</h3><p>Watch the debate live in a branded shell or resilient web dashboard, switch roundtables, see active model activity, drop a message in mid-run, tweak models, refresh the same URL, and hit STOP.</p></div>
     <div class="card"><div class="ico">⏸️</div><h3>Resumable</h3><p>Everything is plain files on disk. Close your laptop, come back, <code>quorum resume</code> — it picks up exactly where it left off.</p></div>
     <div class="card"><div class="ico">🔁</div><h3>Bring your logins</h3><p>Reuses your existing Claude Code and Codex logins — no API keys required for the models you already pay for.</p></div>
     <div class="card"><div class="ico">🧩</div><h3>Extensible</h3><p>Any OpenAI-compatible endpoint — OpenRouter, a local gateway, or a lab API — plugs in. New agent platforms need one small adapter.</p></div>
@@ -209,7 +214,7 @@
 
 <section id="models"><div class="wrap">
   <h2 class="title">Bring any models — mix them freely</h2>
-  <p class="sub">Claude and Codex are your executors (they can build); everything else deliberates, drafts, and verifies. Pick order and sub-models in the dashboard.</p>
+  <p class="sub">Claude and Codex are your executors (they can build); everything else deliberates, drafts, and verifies. Pick order and sub-models in the dashboard Settings panel, then refresh the same tab.</p>
   <div class="models">
     <div class="chip">Claude <span class="tag exec">can build</span></div>
     <div class="chip">Codex / GPT <span class="tag exec">can build</span></div>

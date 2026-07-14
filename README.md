@@ -36,10 +36,11 @@ API models or a local Ollama model so a session can run for free.
 > in isolated git worktrees, **verified by a reviewer and merged**, running **multiple tasks in
 > parallel**. Comes with an interactive shell with a branded terminal banner and arrow-key slash
 > menu, a web dashboard with real-time roundtables/activity and live settings, a **VS Code
-> extension**, `quorum resume`, clarification prompts for vague goals, and frugal free/paid cost
-> policy. All four adapters (Claude, Codex, OpenRouter, Ollama) are verified against live models (see
-> [e2e/SMOKE-RESULTS.md](e2e/SMOKE-RESULTS.md)). See [DESIGN.md](DESIGN.md) for the full vision and
-> [tasks/](tasks/) for the build ledger.
+> extension**, `quorum resume`, clarification prompts for vague goals, frugal free/paid cost
+> policy, and a safer dashboard boot path that opens to a usable roundtable composer even while local
+> settings are loading. All four adapters (Claude, Codex, OpenRouter, Ollama) are verified against
+> live models (see [e2e/SMOKE-RESULTS.md](e2e/SMOKE-RESULTS.md)). See [DESIGN.md](DESIGN.md) for
+> the full vision and [tasks/](tasks/) for the build ledger.
 
 ## Why Quorum (vs other AI tools)
 
@@ -132,7 +133,9 @@ In a **git repo**, `start` runs the whole thing autonomously — the models deli
 plan, then an executor builds it in an isolated worktree, verifies it, and merges. In a non-git
 directory it deliberates and produces a plan (`git init` to enable building). Open the printed
 dashboard URL to watch live, switch between roundtables, inspect active model activity, drop in a
-message, or hit **STOP**.
+message, change models, or hit **STOP**. Model changes keep the same dashboard URL/port; refresh that
+browser tab to see updated settings. If the local dashboard data is briefly unavailable, Quorum shows
+the composer with a retry prompt instead of a blank page.
 
 Commands: `quorum init` · `doctor` · `start "<goal>"` · `status` · `inject "<msg>"` · `pause` ·
 `resume` · `stop` · `attach`.

@@ -81,6 +81,11 @@ tweak settings, or hit STOP.
 - In a **git repo**, Quorum goes all the way: plan → decompose → **build in an isolated worktree →
   verify → merge**.
 - Anywhere else it deliberates and delivers a plan (`git init` to unlock building).
+- The dashboard opens to a usable **New roundtable** composer even while local settings are loading.
+  If it cannot read local session/settings data yet, use the inline **Retry now** prompt or refresh
+  the same tab.
+- Changing models from `/models`, `/frugal`, or dashboard Settings keeps the same dashboard URL/port.
+  Refresh that browser tab to see the latest model catalog and seat chains.
 - Type `/` to open the command popup. Use ↑/↓ and Enter to choose commands like `/models`,
   `/frugal`, `/doctor`, `/dashboard`, `/pause`, `/resume`, `/stop`, and `/status`.
 - Type anything mid-run to steer the table. `/agents` shows the current seats/activity from the
