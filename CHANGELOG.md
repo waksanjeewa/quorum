@@ -22,6 +22,8 @@
   partial local settings data, and shows an inline retry prompt instead of a header-only/blank body.
 - Started first-class Windows/Linux support: added a Windows PowerShell source installer, documented
   platform-specific install commands, and added Windows Credential Manager API-key persistence.
+- Windows installer now refreshes the current PowerShell PATH after `winget` installs prerequisites,
+  so a just-installed Git for Windows can be used without opening a new terminal first.
 - Selecting Ollama now lets you choose the specific local free model instead of silently using
   `ollama/llama3`; dashboard Settings also lists installed Ollama models when reachable.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly

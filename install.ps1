@@ -24,6 +24,52 @@ function Say([string]$Message) { Write-Host $Message }
 function Warn([string]$Message) { Write-Warning $Message }
 function Die([string]$Message) { Write-Error $Message; exit 1 }
 function Have([string]$Command) { [bool](Get-Command $Command -ErrorAction SilentlyContinue) }
+function Is-Windows { return [System.IO.Path]::DirectorySeparatorChar -eq "\" }
+function Add-PathEntries([System.Collections.Generic.List[string]]$Parts, [string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return }
+  foreach ($part in ($Value -split [Regex]::Escape([string][IO.Path]::PathSeparator))) {
+    if (-not [string]::IsNullOrWhiteSpace($part)) { $Parts.Add($part.Trim()) }
+  }
+}
+function Add-ExistingChildPath([System.Collections.Generic.List[string]]$Parts, [string]$Base, [string]$Child) {
+  if ([string]::IsNullOrWhiteSpace($Base)) { return }
+  $candidate = Join-Path $Base $Child
+  if (Test-Path $candidate) { $Parts.Add($candidate) }
+}
+function Refresh-ProcessPath {
+  $parts = New-Object System.Collections.Generic.List[string]
+  Add-PathEntries $parts ([Environment]::GetEnvironmentVariable("Path", "Process"))
+  Add-PathEntries $parts ([Environment]::GetEnvironmentVariable("Path", "User"))
+  Add-PathEntries $parts ([Environment]::GetEnvironmentVariable("Path", "Machine"))
+
+  # Installers launched by winget often update User/Machine PATH but not this PowerShell process.
+  # Add the standard install locations as a belt-and-suspenders fallback so the same run can continue.
+  $programFiles = [Environment]::GetFolderPath("ProgramFiles")
+  $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+  $localAppData = [Environment]::GetFolderPath("LocalApplicationData")
+  Add-ExistingChildPath $parts $programFiles "Git\cmd"
+  Add-ExistingChildPath $parts $programFilesX86 "Git\cmd"
+  Add-ExistingChildPath $parts $localAppData "Programs\Git\cmd"
+  Add-ExistingChildPath $parts $programFiles "nodejs"
+  Add-ExistingChildPath $parts $programFilesX86 "nodejs"
+  Add-ExistingChildPath $parts $localAppData "Programs\Python\Launcher"
+  Add-ExistingChildPath $parts $localAppData "Microsoft\WindowsApps"
+
+  $seen = @{}
+  $deduped = New-Object System.Collections.Generic.List[string]
+  foreach ($part in $parts) {
+    $expanded = [Environment]::ExpandEnvironmentVariables($part).Trim()
+    if ([string]::IsNullOrWhiteSpace($expanded)) { continue }
+    $key = if (Is-Windows) { $expanded.ToLowerInvariant() } else { $expanded }
+    if (-not $seen.ContainsKey($key)) {
+      $seen[$key] = $true
+      $deduped.Add($expanded)
+    }
+  }
+  if ($deduped.Count -gt 0) {
+    $env:Path = [string]::Join([string][IO.Path]::PathSeparator, $deduped.ToArray())
+  }
+}
 function HavePython { (Have "python") -or (Have "py") }
 function PythonVersion {
   if (Have "python") { return (& python --version) -replace '^Python ', '' }
@@ -52,6 +98,7 @@ function Install-WithWinget([string[]]$Ids) {
     if ($LASTEXITCODE -ne 0) {
       Warn "winget could not install $id. If it is already installed, open a new PowerShell and rerun install.ps1."
     }
+    Refresh-ProcessPath
   }
 }
 
@@ -70,8 +117,9 @@ function Install-SystemPackages {
 }
 
 function Verify-Prerequisites {
-  if (-not (Have "git")) { Die "git is required. Install Git for Windows, then rerun." }
-  if (-not (Have "node")) { Die "Node.js >=20 is required. Install the current Node LTS from https://nodejs.org, then rerun." }
+  Refresh-ProcessPath
+  if (-not (Have "git")) { Die "git is required. Install Git for Windows, then rerun. If winget just installed it, open a new PowerShell window and rerun this installer." }
+  if (-not (Have "node")) { Die "Node.js >=20 is required. Install the current Node LTS from https://nodejs.org, then rerun. If winget just installed it, open a new PowerShell window and rerun this installer." }
   if ((NodeMajor) -lt 20) { Die "Node.js >=20 is required; found $(& node -v). Install a current Node LTS, then rerun." }
   if (-not (Have "npm")) { Die "npm is required and should come with Node.js." }
   if (-not (HavePython)) { Die "Python 3 is required for common project tasks. Install Python 3, then rerun." }
@@ -96,6 +144,7 @@ function Ensure-Pnpm {
   }
 }
 
+Refresh-ProcessPath
 Install-SystemPackages
 Verify-Prerequisites
 Ensure-Pnpm
@@ -106,7 +155,11 @@ Say "  npm $(& npm -v)"
 Say "  pnpm $(& pnpm -v)"
 Say "  git $((& git --version) -replace '^git version ', '')"
 Say "  python $(PythonVersion)"
-Say "  Windows Credential Manager available (API-key storage)"
+if (Is-Windows) {
+  Say "  Windows Credential Manager available (API-key storage)"
+} else {
+  Say "  Windows Credential Manager available when run on Windows (API-key storage)"
+}
 
 if (Test-Path (Join-Path $Dir ".git")) {
   Say "Updating $Dir..."
