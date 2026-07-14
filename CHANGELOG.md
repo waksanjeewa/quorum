@@ -30,6 +30,8 @@
   `.cmd`/`.exe` tools directly and removing Quorum's generated `quorum.ps1` shim after linking.
 - CLI startup now avoids writing `.quorum` state into protected Windows folders such as
   `C:\Windows\System32`, falling back to the user's home folder with a clear warning.
+- Dashboard now shows a loading/progress state while a submitted goal is being triaged and the
+  live roundtable is opening, and Settings includes a local System/Dark/Light theme control.
 - Selecting Ollama now lets you choose the specific local free model instead of silently using
   `ollama/llama3`; dashboard Settings also lists installed Ollama models when reachable.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly

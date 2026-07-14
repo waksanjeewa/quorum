@@ -57,6 +57,10 @@ describe("renderDashboard", () => {
     expect(html).toContain("Apply frugal chains"); // choose free drafts + paid verifiers
     expect(html).toContain("Free draft models");
     expect(html).toContain("Paid verifier models");
+    expect(html).toContain('id:"themeMode"');
+    expect(html).toContain("Settings — models, seats &amp; appearance");
+    expect(html).toContain("applyTheme"); // local dark/light/system control
+    expect(html).toContain("quorum.theme"); // saved on this device
   });
 
   it("wires New roundtable, session list, activity, and clarification UX", () => {
@@ -66,6 +70,15 @@ describe("renderDashboard", () => {
     expect(html).toContain("Roundtables");
     expect(html).toContain("Activity");
     expect(html).toContain("activitySeat"); // agent/model chips live under Activity
+  });
+
+  it("shows a loading state while a dashboard goal is starting", () => {
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain("composeBusy");
+    expect(html).toContain("Reading your goal");
+    expect(html).toContain("Convene is starting");
+    expect(html).toContain("loadingLine");
+    expect(html).toContain("spinner");
   });
 
   it("has a safe dashboard boot path when local API/settings data is unavailable", () => {

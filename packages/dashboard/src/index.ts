@@ -41,6 +41,14 @@ const STYLE = `
   --bg:#0A0F12; --fg:#E6F1EE; --muted:#8FA3A0; --line:#20312f; --card:#101719;
   --accent:#10B981; --accent2:#22D3EE; --amber:#F59E0B; --stop:#f87171; --ontint:#04120e;
   --grad:linear-gradient(135deg,#10B981,#0EA5A4 55%,#22D3EE); } }
+:root[data-theme="light"] { color-scheme: light;
+  --bg:#f7faf9; --fg:#0b1210; --muted:#5b6b68; --line:#e0e9e6; --card:#ffffff;
+  --accent:#0EA5A4; --accent2:#0891b2; --amber:#b45309; --stop:#dc2626; --ontint:#04120e;
+  --grad:linear-gradient(135deg,#10B981,#0EA5A4 55%,#22D3EE); }
+:root[data-theme="dark"] { color-scheme: dark;
+  --bg:#0A0F12; --fg:#E6F1EE; --muted:#8FA3A0; --line:#20312f; --card:#101719;
+  --accent:#10B981; --accent2:#22D3EE; --amber:#F59E0B; --stop:#f87171; --ontint:#04120e;
+  --grad:linear-gradient(135deg,#10B981,#0EA5A4 55%,#22D3EE); }
 * { box-sizing: border-box; }
 body { margin:0; font:14px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
 header { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--bg); flex-wrap:wrap; flex:none; }
@@ -85,9 +93,13 @@ body[data-view="live"] main { display:grid; }
 #composeMsg { display:none; margin-top:14px; padding:12px 14px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px; background:var(--bg); font-size:13px; }
 #composeMsg.show { display:block; }
 #composeMsg.err { border-left-color:var(--stop); color:var(--stop); }
+#composeMsg.loading { border-left-color:var(--amber); }
 #composeMsg .who { font-weight:700; color:var(--accent); margin-bottom:4px; }
 #composeMsg .srow { display:flex; gap:8px; margin:2px 0; }
 #composeMsg .srole { color:var(--muted); text-transform:capitalize; min-width:70px; }
+.loadingLine { display:flex; align-items:center; gap:10px; }
+.spinner { width:14px; height:14px; border-radius:999px; border:2px solid color-mix(in srgb, var(--amber) 22%, var(--line)); border-top-color:var(--amber); animation:spin .8s linear infinite; flex:none; }
+@keyframes spin { to { transform:rotate(360deg); } }
 .mchips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
 .mchip { display:flex; gap:6px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px; background:var(--bg); }
 .mchip .role { color:var(--muted); text-transform:capitalize; }
@@ -153,6 +165,7 @@ body:not([data-view]) .liveonly { display:none; }
 .keyRow .name { min-width:150px; }
 .keyRow input { flex:1; min-width:140px; font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
 .keyRow button.signout { color:var(--stop); border-color:var(--stop); }
+.themeSelect { font:inherit; font-size:12px; padding:5px 8px; border:1px solid var(--line); border-radius:7px; background:var(--card); color:var(--fg); }
 .section h3 { margin:0 0 6px; font-size:13px; }
 .frugalBox { border:1px solid color-mix(in srgb, var(--amber) 42%, var(--line)); border-radius:12px; padding:10px 12px; background:color-mix(in srgb, var(--amber) 7%, transparent); }
 .frugalBox .hint { display:block; margin-bottom:8px; }
@@ -176,6 +189,17 @@ const activityEl = $("activity");
 const stageEl = $("stage");
 const seatColor = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>0; return ${JSON.stringify(SEAT_COLORS)}[h % ${SEAT_COLORS.length}]; };
 const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props||{}); for (const k of kids) if(k!=null) e.append(k); return e; };
+const THEME_KEY = "quorum.theme";
+const validTheme = t => ["system","dark","light"].includes(t) ? t : "system";
+const readTheme = () => { try { return validTheme(localStorage.getItem(THEME_KEY) || "system"); } catch { return "system"; } };
+function applyTheme(theme) {
+  const t = validTheme(theme);
+  if (t === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.dataset.theme = t;
+  try { localStorage.setItem(THEME_KEY, t); } catch {}
+  const sel = $("themeMode"); if (sel) sel.value = t;
+}
+applyTheme(readTheme());
 const isFreeId = (id) => id.startsWith("ollama/") || /:free$/i.test(id);
 const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
 const uniq = xs => [...new Set((xs||[]).filter(Boolean))];
@@ -242,6 +266,7 @@ let settings = null;   // cached /settings for the compose view
 let es = null;         // live EventSource
 let activeStatus = null;
 let activityNote = "";
+let composeBusy = false;
 const fmtElapsed = ms => { const s=Math.floor((ms||0)/1000); return s<60 ? s+"s" : Math.floor(s/60)+"m "+(s%60)+"s"; };
 
 async function loadSettings() {
@@ -396,6 +421,7 @@ function renderCompose() {
   $("composeHint").textContent = canBuild ? "Plans and builds — Claude/Codex present." : "Plans only — add Claude or Codex in Settings to build.";
 }
 function showCompose() {
+  setComposeBusy(false);
   if (es) { es.close(); es = null; }
   sessionId = null;
   activeStatus = null;
@@ -411,6 +437,22 @@ function showComposeMsg(content, kind) {
   const box = $("composeMsg");
   box.innerHTML = ""; box.className = "show" + (kind ? " " + kind : "");
   if (typeof content === "string") box.textContent = content; else box.append(content);
+}
+function setComposeBusy(on, text) {
+  composeBusy = Boolean(on);
+  const btn = $("startBtn");
+  const input = $("goalInput");
+  btn.disabled = composeBusy;
+  btn.textContent = composeBusy ? "Starting…" : "Convene ▸";
+  input.readOnly = composeBusy;
+  if (composeBusy) {
+    const box = el("div");
+    box.append(
+      el("div", { className:"loadingLine" }, el("span", { className:"spinner" }), el("strong", { textContent:text || "Starting the roundtable…" })),
+      el("div", { className:"hint", textContent:"Quorum is checking the goal, seating the models, and opening the live workspace." }),
+    );
+    showComposeMsg(box, "loading");
+  }
 }
 // A support answer built from local settings — shown when the user asks about the setup.
 function settingsHelpNode() {
@@ -442,33 +484,38 @@ function settingsHelpNode() {
   return wrap;
 }
 async function startFusion() {
+  if (composeBusy) return;
   let goal = $("goalInput").value.trim(); if (!goal) return;
   const forced = /^\\/goal\\b/i.test(goal);           // "/goal …" skips triage and starts straight away
   if (forced) goal = goal.replace(/^\\/goal\\b\\s*/i, "").trim();
   if (!goal) return;
-  const btn = $("startBtn"); const label = btn.textContent; btn.disabled = true; btn.textContent = "…";
+  setComposeBusy(true, forced ? "Opening the roundtable…" : "Reading your goal…");
   try {
     if (!forced) {
+      setComposeBusy(true, "Checking whether this is ready to build…");
       const t = await (await api("/triage", "POST", { text: goal })).json();
       if (t.intent === "chat") {
         const n = el("div"); n.append(el("div", { className:"who", textContent:"Quorum" }), el("div", { textContent: t.reply || "Hi! Tell me what you'd like to build or plan." }));
+        setComposeBusy(false);
         showComposeMsg(n, "chat"); return;
       }
       if (t.intent === "clarify") {
         const n = el("div"); n.append(el("div", { className:"who", textContent:"Quorum" }), el("div", { textContent: t.reply || "What should the models build or change?" }));
+        setComposeBusy(false);
         showComposeMsg(n, "chat"); $("goalInput").focus(); return;
       }
-      if (t.intent === "meta") { showComposeMsg(settingsHelpNode(), ""); return; }
+      if (t.intent === "meta") { setComposeBusy(false); showComposeMsg(settingsHelpNode(), ""); return; }
     }
-    $("composeMsg").className = "";
+    setComposeBusy(true, "Convene is starting — opening the live workspace…");
     $("goalInput").value = "";                          // clear only once a real roundtable starts
     const res = await api("/sessions", "POST", { goal });
     if (!res.ok) throw new Error((await res.json()).error || res.status);
     showLive(await res.json());
   } catch (err) {
+    setComposeBusy(false);
     showComposeMsg("Couldn't start: " + err, "err");
   } finally {
-    btn.disabled = false; btn.textContent = label;
+    if (document.body.dataset.view !== "live") setComposeBusy(false);
   }
 }
 
@@ -537,6 +584,16 @@ const modelId = (provId, model) => { const p = (S.catalog.providers||[]).find(x=
 function renderSettings() {
   S = normalizeSettings(S);
   sbody.innerHTML = "";
+  const tsec = el("div",{className:"section"});
+  tsec.append(el("h3",{textContent:"Appearance"}));
+  const trow = el("div",{className:"keyRow"});
+  const themeSel = el("select",{id:"themeMode", className:"themeSelect"});
+  [["system","System"],["dark","Dark"],["light","Light"]].forEach(([value,label]) => themeSel.append(el("option",{value, textContent:label})));
+  themeSel.value = readTheme();
+  themeSel.onchange = () => applyTheme(themeSel.value);
+  trow.append(el("span",{className:"name", textContent:"Theme"}), themeSel, el("span",{className:"hint", textContent:"saved on this device"}));
+  tsec.append(trow);
+  sbody.append(tsec);
   const frugal = splitFrugalModels(S.seats);
   const fsec = el("div",{className:"section frugalBox"});
   fsec.append(el("h3",{textContent:"Frugal mode"}));
@@ -710,7 +767,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
 <div class="goalbar"><span class="lbl">Goal</span><span class="g" id="goalText"></span></div>
 <div id="settingsPanel">
   <div class="sheet">
-    <div class="row"><h2>Settings — models &amp; seats</h2><span style="flex:1"></span><button id="cfgClose">Close</button><button id="cfgSave">Save</button></div>
+    <div class="row"><h2>Settings — models, seats &amp; appearance</h2><span style="flex:1"></span><button id="cfgClose">Close</button><button id="cfgSave">Save</button></div>
     <span class="hint">Each seat is a <b>failover chain</b> — tried top to bottom. Free models draft, paid verify; only Claude/Codex can build. Applies to the <b>next</b> session.</span>
     <span class="msg" id="cfgMsg"></span>
     <div id="settingsBody">Loading…</div>
@@ -733,7 +790,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
       <span class="hint" id="composeHint"></span>
       <button class="primary start" id="startBtn">Convene ▸</button>
     </div>
-    <div id="composeMsg"></div>
+    <div id="composeMsg" aria-live="polite"></div>
   </div>
 </div></section>
 <main>
