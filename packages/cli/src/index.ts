@@ -11,6 +11,7 @@ import { formatEvent } from "./format.js";
 import { repl } from "./repl.js";
 import { runSetup } from "./setup.js";
 import { resolveSecretsEnv, knownKeyEnvs } from "./keychain.js";
+import { resolveProjectRoot } from "./project-root.js";
 
 const HELP = `Quorum — multiple AI models collaborate on one goal.
 
@@ -40,10 +41,10 @@ async function version(): Promise<string> {
 
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
-  const projectRoot = process.cwd();
 
   if (cmd === "--version" || cmd === "-v") return void console.log(await version());
   if (cmd === "--help" || cmd === "-h" || cmd === "help") return void console.log(HELP);
+  const projectRoot = await resolveProjectRoot({ warn: (message) => console.error(`\x1b[33m•\x1b[0m ${message}`) });
   if (!cmd) return repl(projectRoot); // no args → interactive shell
 
   switch (cmd) {

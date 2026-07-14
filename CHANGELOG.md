@@ -28,6 +28,8 @@
   `quorum --version` before printing success.
 - Windows installer now avoids Node's PowerShell `.ps1` shims on restricted systems by using
   `.cmd`/`.exe` tools directly and removing Quorum's generated `quorum.ps1` shim after linking.
+- CLI startup now avoids writing `.quorum` state into protected Windows folders such as
+  `C:\Windows\System32`, falling back to the user's home folder with a clear warning.
 - Selecting Ollama now lets you choose the specific local free model instead of silently using
   `ollama/llama3`; dashboard Settings also lists installed Ollama models when reachable.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly

@@ -60,6 +60,11 @@ Then check your machine:
 quorum doctor
 ```
 
+Tip for Windows: PowerShell can open in `C:\Windows\System32`, which is protected. Quorum avoids
+writing state there and uses your user folder instead. For project-local sessions, run `cd` into your
+repo or workspace before launching `quorum`. Advanced: set `QUORUM_PROJECT_ROOT` to force a specific
+state folder.
+
 `doctor` verifies node, git, and every configured model — with an actionable hint for anything missing.
 
 ## 3. Pick your models (no config files)

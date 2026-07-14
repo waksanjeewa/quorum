@@ -29,6 +29,10 @@ Then run:
 quorum
 ```
 
+Run Quorum from the folder you want it to work in. On Windows, if PowerShell opens in
+`C:\Windows\System32`, Quorum falls back to your user folder for `.quorum` state; `cd` into a real
+project folder first if you want project-local sessions and config.
+
 **Many models, working together — the session will never die.** Multiple AI models collaborate on one goal — brainstorming,
 planning, and building together — handing off to each other when usage limits hit, with you able to
 step in at any moment without stopping the work.
