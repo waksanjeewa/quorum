@@ -24,6 +24,8 @@
   platform-specific install commands, and added Windows Credential Manager API-key persistence.
 - Windows installer now refreshes the current PowerShell PATH after `winget` installs prerequisites,
   so a just-installed Git for Windows can be used without opening a new terminal first.
+- Windows installer now checks npm's global command folder after linking Quorum and verifies
+  `quorum --version` before printing success.
 - Selecting Ollama now lets you choose the specific local free model instead of silently using
   `ollama/llama3`; dashboard Settings also lists installed Ollama models when reachable.
 - Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly

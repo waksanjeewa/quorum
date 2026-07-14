@@ -36,6 +36,44 @@ function Add-ExistingChildPath([System.Collections.Generic.List[string]]$Parts, 
   $candidate = Join-Path $Base $Child
   if (Test-Path $candidate) { $Parts.Add($candidate) }
 }
+function Normalize-PathForCompare([string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
+  $path = [Environment]::ExpandEnvironmentVariables($Value).Trim()
+  while ($path.EndsWith("\") -or $path.EndsWith("/")) {
+    $path = $path.Substring(0, $path.Length - 1)
+  }
+  if (Is-Windows) { return $path.ToLowerInvariant() }
+  return $path
+}
+function Path-Contains([string]$PathValue, [string]$Entry) {
+  if ([string]::IsNullOrWhiteSpace($PathValue) -or [string]::IsNullOrWhiteSpace($Entry)) { return $false }
+  $needle = Normalize-PathForCompare $Entry
+  foreach ($part in ($PathValue -split [Regex]::Escape([string][IO.Path]::PathSeparator))) {
+    if ((Normalize-PathForCompare $part) -eq $needle) { return $true }
+  }
+  return $false
+}
+function Append-PathValue([string]$PathValue, [string]$Entry) {
+  if ([string]::IsNullOrWhiteSpace($PathValue)) { return $Entry }
+  return "$PathValue$([string][IO.Path]::PathSeparator)$Entry"
+}
+function Ensure-PathContains([string]$Entry, [switch]$PersistUser) {
+  if ([string]::IsNullOrWhiteSpace($Entry)) { return }
+  $expanded = [Environment]::ExpandEnvironmentVariables($Entry).Trim()
+  if ([string]::IsNullOrWhiteSpace($expanded)) { return }
+
+  if (-not (Path-Contains $env:Path $expanded)) {
+    $env:Path = Append-PathValue $env:Path $expanded
+  }
+
+  if ($PersistUser -and (Is-Windows)) {
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if (-not (Path-Contains $userPath $expanded)) {
+      [Environment]::SetEnvironmentVariable("Path", (Append-PathValue $userPath $expanded), "User")
+      Say "Added $expanded to your user PATH for future PowerShell windows."
+    }
+  }
+}
 function Refresh-ProcessPath {
   $parts = New-Object System.Collections.Generic.List[string]
   Add-PathEntries $parts ([Environment]::GetEnvironmentVariable("Path", "Process"))
@@ -126,6 +164,7 @@ function Verify-Prerequisites {
 }
 
 function Ensure-Pnpm {
+  $null = Ensure-NpmGlobalBinOnPath
   if (Have "pnpm") { return }
 
   if (Have "corepack") {
@@ -140,8 +179,64 @@ function Ensure-Pnpm {
   if (-not (Have "pnpm")) {
     Say "Installing pnpm@$PnpmVersion with npm..."
     & npm install -g "pnpm@$PnpmVersion"
+    $null = Ensure-NpmGlobalBinOnPath -PersistUser
     if ($LASTEXITCODE -ne 0) { Die "npm could not install pnpm." }
   }
+}
+
+function Get-NpmGlobalBin {
+  if (-not (Have "npm")) { return $null }
+  try {
+    $prefix = (& npm prefix -g).Trim()
+    if ([string]::IsNullOrWhiteSpace($prefix)) { return $null }
+    if (Is-Windows) { return $prefix }
+    return Join-Path $prefix "bin"
+  } catch {
+    return $null
+  }
+}
+
+function Ensure-NpmGlobalBinOnPath([switch]$PersistUser) {
+  $bin = Get-NpmGlobalBin
+  if ([string]::IsNullOrWhiteSpace($bin)) { return $null }
+  Ensure-PathContains $bin -PersistUser:$PersistUser
+  return $bin
+}
+
+function Verify-QuorumCommand {
+  $npmBin = if (Is-Windows) {
+    Ensure-NpmGlobalBinOnPath -PersistUser
+  } else {
+    Ensure-NpmGlobalBinOnPath
+  }
+
+  if (Have "quorum") {
+    $output = & quorum --version 2>&1
+    $exitCode = $LASTEXITCODE
+    $version = (($output | Out-String).Trim())
+    if ($null -eq $exitCode -or $exitCode -eq 0) {
+      if ([string]::IsNullOrWhiteSpace($version)) {
+        Say "  quorum command available"
+      } else {
+        Say "  quorum $version"
+      }
+      return
+    }
+    $detail = if ([string]::IsNullOrWhiteSpace($version)) { "no output" } else { $version }
+    Die "Quorum was linked, but `quorum --version` failed: $detail"
+  }
+
+  $hint = $null
+  if (-not [string]::IsNullOrWhiteSpace($npmBin)) {
+    $hint = Join-Path $npmBin $(if (Is-Windows) { "quorum.cmd" } else { "quorum" })
+  }
+  if ($hint -and (Test-Path $hint)) {
+    Warn "Quorum was linked at $hint, but PowerShell cannot find it on PATH yet. Open a new PowerShell window and run `quorum`, or run `"$hint`" directly."
+    return
+  }
+
+  $pathHint = if ($npmBin) { $npmBin } else { "the npm global bin directory" }
+  Die "Quorum linked, but the `quorum` command is not on PATH. Add $pathHint to PATH, open a new PowerShell window, and rerun this installer."
 }
 
 Refresh-ProcessPath
@@ -192,6 +287,7 @@ try {
 }
 
 Write-Host ""
+Verify-QuorumCommand
 Say "✓ Installed. Next:"
 Say "    quorum doctor          # see which models you're logged into"
 Say "    quorum init            # scaffold a config in your project"
