@@ -63,6 +63,8 @@ The first run drops you straight into the model picker:
   (free models listed first and flagged).
 - If you mix free and paid models, Quorum offers **frugal mode**: free models do the bulk
   drafting, paid models only verify and improve.
+- Want to choose those deliberately? Run `/frugal`, or use the dashboard **Frugal** button /
+  **Settings → Frugal mode** to pick free draft models and paid verifier models.
 
 ## 4. Give it a goal
 
@@ -77,8 +79,8 @@ tweak settings, or hit STOP.
 - In a **git repo**, Quorum goes all the way: plan → decompose → **build in an isolated worktree →
   verify → merge**.
 - Anywhere else it deliberates and delivers a plan (`git init` to unlock building).
-- Type `/` to open the command popup. Use ↑/↓ and Enter to choose commands like `/models`, `/doctor`,
-  `/dashboard`, `/pause`, `/resume`, `/stop`, and `/status`.
+- Type `/` to open the command popup. Use ↑/↓ and Enter to choose commands like `/models`,
+  `/frugal`, `/doctor`, `/dashboard`, `/pause`, `/resume`, `/stop`, and `/status`.
 - Type anything mid-run to steer the table. `/agents` shows the current seats/activity from the
   terminal; the dashboard also lists every roundtable on the left and shows active agents under
   **Activity**.
@@ -91,6 +93,7 @@ tweak settings, or hit STOP.
 |---|---|
 | `quorum` | interactive shell (recommended) |
 | `/models` | pick/change models, add API keys |
+| `/frugal` | choose free draft models + paid verifier models |
 | `/agents` | seats, current task, elapsed time |
 | `/dashboard` | open the live local dashboard |
 | `/doctor` | readiness check |

@@ -59,13 +59,13 @@ export const QUORUM_ASCII_WORD = [
 ] as const;
 
 export const QUORUM_TERMINAL_LOCKUP = [
-  `${markPlain(0)} ${QUORUM_ASCII_WORD[0]}`,
-  `${markPlain(1)} ${QUORUM_ASCII_WORD[1]}`,
-  `${markPlain(2)} ${QUORUM_ASCII_WORD[2]}`,
-  `${markPlain(3)} ${QUORUM_ASCII_WORD[3]}`,
-  `${markPlain(4)} ${QUORUM_ASCII_WORD[4]}`,
-  `${markPlain(5)}   many models, working together`,
-  `${markPlain(6)}   the session never dies · you're always at the table`,
+  `${markPlain(0)}`,
+  `${markPlain(1)} ${QUORUM_ASCII_WORD[0]}`,
+  `${markPlain(2)} ${QUORUM_ASCII_WORD[1]}`,
+  `${markPlain(3)} ${QUORUM_ASCII_WORD[2]}`,
+  `${markPlain(4)} ${QUORUM_ASCII_WORD[3]}`,
+  `${markPlain(5)} ${QUORUM_ASCII_WORD[4]}`,
+  `${markPlain(6)}   many models, working together`,
 ] as const;
 
 /** Logo-v2-inspired CLI launch lockup: compact mark + correct ASCII QUORUM word. */
@@ -74,13 +74,13 @@ export function quorumLogo(): string {
   const mark = colorMark();
   const word = QUORUM_ASCII_WORD.map((line) => C.text(C.bold(line)));
   return [
-    `${mark[0]} ${word[0]}`,
-    `${mark[1]} ${word[1]}`,
-    `${mark[2]} ${word[2]}`,
-    `${mark[3]} ${word[3]}`,
-    `${mark[4]} ${word[4]}`,
-    `${mark[5]}   ${C.muted("many models, working together")}`,
-    `${mark[6]}   ${C.muted("the session never dies · you're always at the table")}`,
+    `${mark[0]}`,
+    `${mark[1]} ${word[0]}`,
+    `${mark[2]} ${word[1]}`,
+    `${mark[3]} ${word[2]}`,
+    `${mark[4]} ${word[3]}`,
+    `${mark[5]} ${word[4]}`,
+    `${mark[6]}   ${C.muted("many models, working together")}`,
   ].join("\n");
 }
 

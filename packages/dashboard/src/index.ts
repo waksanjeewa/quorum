@@ -79,6 +79,8 @@ body[data-view="live"] main { display:grid; }
 .presets { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
 .preset { border:1px solid var(--line); background:var(--bg); border-radius:999px; padding:6px 16px; cursor:pointer; font-size:13px; }
 .preset.active { background:var(--grad); color:var(--ontint); border-color:transparent; font-weight:700; }
+.preset.frugal { border-color:color-mix(in srgb, var(--amber) 48%, var(--line)); color:var(--amber); }
+.preset.frugal.active { background:var(--amber); color:#0A0F12; border-color:var(--amber); }
 #composeMsg { display:none; margin-top:14px; padding:12px 14px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px; background:var(--bg); font-size:13px; }
 #composeMsg.show { display:block; }
 #composeMsg.err { border-left-color:var(--stop); color:var(--stop); }
@@ -150,6 +152,8 @@ body[data-view="compose"] .liveonly { display:none; }
 .keyRow input { flex:1; min-width:140px; font:inherit; font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); }
 .keyRow button.signout { color:var(--stop); border-color:var(--stop); }
 .section h3 { margin:0 0 6px; font-size:13px; }
+.frugalBox { border:1px solid color-mix(in srgb, var(--amber) 42%, var(--line)); border-radius:12px; padding:10px 12px; background:color-mix(in srgb, var(--amber) 7%, transparent); }
+.frugalBox .hint { display:block; margin-bottom:8px; }
 .pill { font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--line); }
 .pill.ok { color:#16a34a; border-color:#16a34a; } .pill.no { color:var(--muted); }
 code.cmd { background:var(--card); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
@@ -172,6 +176,24 @@ const seatColor = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))>>>
 const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props||{}); for (const k of kids) if(k!=null) e.append(k); return e; };
 const isFreeId = (id) => id.startsWith("ollama/") || /:free$/i.test(id);
 const isExecId = (id) => /^(claude|codex)(\\/|$)/.test(id);
+const uniq = xs => [...new Set((xs||[]).filter(Boolean))];
+const parseModelList = text => uniq(String(text||"").split(/[,\n]+/).map(x=>x.trim()));
+const allSeatModels = seats => uniq(Object.values(seats||{}).flatMap(s => s.chain || []));
+const splitFrugalModels = seats => {
+  const ids = allSeatModels(seats);
+  return { free: ids.filter(isFreeId), paid: ids.filter(id => !isFreeId(id)) };
+};
+function applyFrugalChains(seats, freeIds, paidIds) {
+  const free = uniq(freeIds), paid = uniq(paidIds);
+  if (!free.length || !paid.length) return { ok:false, message:"Frugal mode needs at least one free model and one paid/subscription model." };
+  seats.proposer = seats.proposer || { chain:[] };
+  seats.critic = seats.critic || { chain:[] };
+  seats.arbiter = seats.arbiter || { chain:[] };
+  seats.proposer.chain = uniq([...free, ...paid]);             // free drafts first
+  seats.critic.chain = uniq([...paid, ...free]);               // paid verifies first
+  seats.arbiter.chain = uniq([...paid].reverse().concat(free)); // different paid model gets first call when possible
+  return { ok:true, message:"Frugal mode enabled: free models draft; paid/subscription models verify and decide." };
+}
 let sessionId = null;
 let settings = null;   // cached /settings for the compose view
 let es = null;         // live EventSource
@@ -283,7 +305,7 @@ let preset = "Quality";
 function tierScore(id, p) {
   const free = isFreeId(id), exec = isExecId(id);
   const fast = /haiku|flash|mini|8b|instant|nano|small/i.test(id);
-  if (p === "Budget") return free ? 0 : 2;              // free first
+  if (p === "Budget") return free ? 0 : 2;              // legacy alias
   if (p === "Fast")   return fast ? 0 : (free ? 1 : 2); // fast first
   return exec ? 0 : (free ? 2 : 1);                     // Quality: executor/paid first
 }
@@ -392,11 +414,22 @@ $("presets").addEventListener("click", async e => {
   const b = e.target.closest(".preset"); if (!b) return;
   const p = b.dataset.p;
   if (p === "Custom") { openSettings(); return; }
-  document.querySelectorAll(".preset").forEach(x => x.classList.toggle("active", x === b));
   preset = p;
-  for (const s of Object.values(settings.seats)) {
-    s.chain = s.chain.map((id,i)=>({id,i})).sort((a,b)=> tierScore(a.id,p)-tierScore(b.id,p) || a.i-b.i).map(x=>x.id);
+  if (p === "Frugal") {
+    const picks = splitFrugalModels(settings.seats);
+    const applied = applyFrugalChains(settings.seats, picks.free, picks.paid);
+    if (!applied.ok) {
+      showComposeMsg(applied.message + " Open Settings to add an Ollama/OpenRouter :free model and Claude/Codex/API verifier.", "err");
+      return;
+    }
+    showComposeMsg(applied.message, "");
+  } else {
+    $("composeMsg").className = "";
+    for (const s of Object.values(settings.seats)) {
+      s.chain = s.chain.map((id,i)=>({id,i})).sort((a,b)=> tierScore(a.id,p)-tierScore(b.id,p) || a.i-b.i).map(x=>x.id);
+    }
   }
+  document.querySelectorAll(".preset").forEach(x => x.classList.toggle("active", x === b));
   await api("/settings","PUT",{ seats:settings.seats, budgets:settings.budgets, providers:settings.providers, execution:settings.execution });
   renderCompose();
 });
@@ -423,6 +456,26 @@ const modelId = (provId, model) => { const p = S.catalog.providers.find(x=>x.id=
 
 function renderSettings() {
   sbody.innerHTML = "";
+  const frugal = splitFrugalModels(S.seats);
+  const fsec = el("div",{className:"section frugalBox"});
+  fsec.append(el("h3",{textContent:"Frugal mode"}));
+  fsec.append(el("span",{className:"hint", textContent:"Choose which free models draft volume work and which paid/subscription models verify, critique, and decide. Click Apply, then Save."}));
+  const frow = el("div",{className:"keyRow"});
+  const freeInput = el("input",{value:frugal.free.join(", "), placeholder:"ollama/llama3, openrouter/deepseek/deepseek-chat:free"});
+  frow.append(el("span",{className:"name", textContent:"Free draft models"}), freeInput);
+  const prow = el("div",{className:"keyRow"});
+  const paidInput = el("input",{value:frugal.paid.join(", "), placeholder:"claude, codex, openrouter/anthropic/claude-3.7-sonnet"});
+  prow.append(el("span",{className:"name", textContent:"Paid verifier models"}), paidInput);
+  const apply = el("button",{textContent:"Apply frugal chains"});
+  apply.onclick=()=>{
+    const res = applyFrugalChains(S.seats, parseModelList(freeInput.value), parseModelList(paidInput.value));
+    cfgMsg.textContent = res.ok ? res.message + " Save to use this for the next session." : res.message;
+    cfgMsg.className = "msg " + (res.ok ? "ok" : "err");
+    if (res.ok) renderSettings();
+  };
+  fsec.append(frow, prow, apply);
+  sbody.append(fsec);
+
   for (const [seat, s] of Object.entries(S.seats)) {
     const card = el("div", {className:"seatCard"});
     card.append(el("h3", {textContent: seat}));
@@ -577,7 +630,7 @@ export function renderDashboard(token: string, baseUrl = ""): string {
   <div class="composeCard">
     <div class="presets" id="presets">
       <button class="preset active" data-p="Quality">Quality</button>
-      <button class="preset" data-p="Budget">Budget</button>
+      <button class="preset frugal" data-p="Frugal">Frugal</button>
       <button class="preset" data-p="Fast">Fast</button>
       <button class="preset" data-p="Custom">Custom…</button>
     </div>

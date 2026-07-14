@@ -7,6 +7,7 @@ describe("interactive slash command menu", () => {
     const matches = slashMenuMatches("/");
     expect(matches.length).toBeGreaterThan(8);
     expect(matches.map(([cmd]) => cmd)).toContain("/models");
+    expect(matches.map(([cmd]) => cmd)).toContain("/frugal");
     expect(matches.map(([cmd]) => cmd)).toContain("/doctor");
   });
 
@@ -18,6 +19,7 @@ describe("interactive slash command menu", () => {
 
   it("backs readline tab-completion with the same command list", () => {
     expect(completeSlash("/sta")[0]).toEqual(["/status"]);
+    expect(completeSlash("/fru")[0]).toEqual(["/frugal"]);
     expect(completeSlash("hello")).toEqual([[], "hello"]);
     expect(completeSlash("/missing")[0]).toEqual(SLASH_COMMANDS.map(([cmd]) => cmd));
   });

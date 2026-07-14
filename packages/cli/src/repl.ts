@@ -5,7 +5,7 @@ import { QuorumHttpServer, loadConfig, doctorReport, liveTurnCheck, buildTriageR
 import { triage, quickTriage, parseSessionConfig, type SessionConfig } from "@quorum/core";
 import { renderDashboard } from "@quorum/dashboard";
 import { formatEvent } from "./format.js";
-import { runSetup } from "./setup.js";
+import { runFrugalSetup, runSetup } from "./setup.js";
 import { resolveSecretsEnv, knownKeyEnvs } from "./keychain.js";
 import { C, PROMPT, promptWith, quorumLogo } from "./theme.js";
 import type { RunningSession } from "@quorum/daemon";
@@ -14,6 +14,7 @@ import type { RunningSession } from "@quorum/daemon";
 export const SLASH_COMMANDS: Array<[string, string]> = [
   ["/goal", "build this goal directly (skip the chat/greeting check)"],
   ["/models", "pick models — login or paste an API key"],
+  ["/frugal", "configure free drafts + paid verification"],
   ["/dashboard", "open the live web dashboard"],
   ["/doctor", "check which model seats are ready"],
   ["/agents", "seats, live activity & elapsed time"],
@@ -68,6 +69,7 @@ export const renderSlashMenu = (matches: Array<[string, string]>, cursorColumn =
 const HELP = `${C.bold("Commands")} ${C.dim("(type a goal to build; while running, type to send a message to the table)")}
   ${C.brand("/goal")} ${C.dim("<text>")}    start building this goal directly (skip the chat/greeting check)
   ${C.brand("/models")}          pick your models — login or paste an API key
+  ${C.brand("/frugal")}          choose free drafting models + paid verifier models
   ${C.brand("/dashboard")}       open the live web dashboard (watch · inject · settings · STOP)
   ${C.brand("/doctor")}          check which model seats are ready
   ${C.brand("/agents")}          show the seats, what they're doing, and elapsed time
@@ -346,6 +348,18 @@ export async function repl(projectRoot: string): Promise<void> {
           await runSetup(projectRoot, rl);
           rl.resume();
           // Restart the dashboard so freshly-added keys/models take effect (unless mid-run).
+          if (!running && server) {
+            await server.close();
+            server = undefined;
+            dashboardUrl = "";
+            const url = await ensureServer().catch(() => "");
+            if (url) info(`dashboard: ${url}`);
+          }
+          return;
+        case "frugal":
+          rl.pause();
+          await runFrugalSetup(projectRoot, rl);
+          rl.resume();
           if (!running && server) {
             await server.close();
             server = undefined;

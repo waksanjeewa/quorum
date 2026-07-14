@@ -4,6 +4,9 @@ Everything lives in one file per project: `.quorum/config.yaml`. You rarely edit
 `/models` in the shell writes it, and the **dashboard ⚙ Settings** panel edits it live (validated
 on save, applies to the next session).
 
+For cost-aware runs, use `/frugal` or the dashboard **Frugal** button. You can explicitly choose
+which free models draft and which paid/subscription models verify.
+
 ## The model id language
 
 A seat's `chain` is a **failover list**, tried in order. Ids:
@@ -75,8 +78,9 @@ providers:
 ```
 
 Notes:
-- **Frugal mode** (offered automatically in `/models` when you mix free + paid) generates exactly
-  this shape: proposer free-first, critic/arbiter paid-first. Paid quota buys judgement, not volume.
+- **Frugal mode** (offered automatically in `/models`, explicitly via `/frugal`, and in the
+  dashboard) generates exactly this shape: proposer free-first, critic/arbiter paid-first. Paid
+  quota buys judgement, not volume.
 - **Failover** is per-seat: when a model hits its usage limit, the next in the chain picks up the
   same seat mid-conversation. Sessions never die.
 - Keys are **never stored in files** — env vars or the OS Keychain (`/models` handles this).

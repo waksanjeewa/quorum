@@ -15,6 +15,7 @@ describe("renderDashboard", () => {
     expect(html).toContain('class="qLogo heroLogo"'); // real Quorum mark in the compose hero
     expect(html).toContain(`v${APP_VERSION}`); // public app version
     expect(html).toContain("#F59E0B"); // single amber consensus node
+    expect(html).toContain('data-p="Frugal"'); // explicit frugal-mode button
     expect(html).not.toContain('id="seats"'); // separate agent cards are intentionally gone
     expect(html).not.toContain("<h3>Agents</h3>");
     expect(html).not.toContain("<span class=\"dia\">◆</span> Quorum");
@@ -52,6 +53,9 @@ describe("renderDashboard", () => {
     expect(html).toContain('"/settings"'); // structured GET/PUT
     expect(html).toContain('"/keys"'); // save API key
     expect(html).toContain("renderSettings"); // model manager
+    expect(html).toContain("Apply frugal chains"); // choose free drafts + paid verifiers
+    expect(html).toContain("Free draft models");
+    expect(html).toContain("Paid verifier models");
   });
 
   it("wires New roundtable, session list, activity, and clarification UX", () => {

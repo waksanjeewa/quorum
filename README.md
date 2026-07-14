@@ -114,9 +114,10 @@ codex login       # for a `codex` seat (ChatGPT Plus/Pro)
 ```
 $ quorum
   ◆ quorum ❯ /models       ← pick your models: log in, or paste an API key (saved to your Keychain)
+  ◆ quorum ❯ /frugal       ← choose free draft models + paid verifier models
   ◆ quorum ❯ build me a CLI that converts CSV to JSON
   … streams live — type to add a message, /pause, /stop …
-  ◆ quorum ❯ /help         ← /models /doctor /status /pause /resume /stop /config /exit
+  ◆ quorum ❯ /help         ← /models /frugal /doctor /status /pause /resume /stop /config /exit
 ```
 
 Type `/` in the shell to open the command popup; use ↑/↓ and Enter to select, Claude-terminal style.
@@ -236,6 +237,9 @@ Run the tests with `corepack pnpm test`. For a manual check against real models,
 Mix free and paid models and Quorum offers **frugal mode**: free models (Ollama, OpenRouter `:free`)
 do the bulk drafting; your paid models are spent only on verifying and improving; Claude/Codex do
 the building. Hard caps (`max_cost_usd`, `wall_clock_max`) back it up.
+
+Use `/frugal` in the terminal or the dashboard **Frugal** button to choose exactly which free models
+draft and which paid/subscription models verify.
 
 ## Contributors
 

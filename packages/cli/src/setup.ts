@@ -26,21 +26,29 @@ export function isFreeModel(id: string): boolean {
  * (proposer chain is free-first), paid models verify and improve (critic/arbiter are paid-first),
  * so paid quota is spent on judgement, not volume. Executors are always Claude/Codex regardless.
  */
+export interface BuildConfigOptions {
+  frugal?: boolean;
+  frugalFreeModels?: string[];
+  frugalPaidModels?: string[];
+}
+
 export function buildConfigYaml(
   models: string[],
   providers: Record<string, ProviderEntry> = {},
-  opts: { frugal?: boolean } = {},
+  opts: BuildConfigOptions = {},
 ): string {
   const uniq = (xs: (string | undefined)[]): string[] => [...new Set(xs.filter((x): x is string => Boolean(x)))];
   const frees = models.filter(isFreeModel);
   const paids = models.filter((m) => !isFreeModel(m));
+  const frugalFrees = opts.frugalFreeModels?.filter(Boolean) ?? frees;
+  const frugalPaids = opts.frugalPaidModels?.filter(Boolean) ?? paids;
 
   let seats: Record<string, string[]>;
-  if (opts.frugal && frees.length > 0 && paids.length > 0) {
+  if (opts.frugal && frugalFrees.length > 0 && frugalPaids.length > 0) {
     seats = {
-      proposer: uniq([...frees, ...paids]), // free-first: drafting volume costs nothing
-      critic: uniq([...paids, ...frees]), // paid-first: verification quality
-      arbiter: uniq([...[...paids].reverse(), ...frees]), // a different paid model when available
+      proposer: uniq([...frugalFrees, ...frugalPaids]), // free-first: drafting volume costs nothing
+      critic: uniq([...frugalPaids, ...frugalFrees]), // paid-first: verification quality
+      arbiter: uniq([...[...frugalPaids].reverse(), ...frugalFrees]), // a different paid model when available
     };
   } else {
     const fallback = models.find((m) => m.startsWith("ollama/"));
@@ -144,6 +152,20 @@ async function pickModels(rl: Readline, models: Array<{ id: string; free: boolea
   return out.length > 0 ? out : [sorted[0]!.id];
 }
 
+async function pickSubset(rl: Readline, label: string, models: string[]): Promise<string[]> {
+  const uniq = [...new Set(models.filter(Boolean))];
+  if (uniq.length <= 1) return uniq;
+  console.log(`\n  ${label}:`);
+  uniq.forEach((m, i) => console.log(`    ${C.dim(`[${i + 1}]`)} ${m}`));
+  const ans = await ask(rl, `  Use which ${label.toLowerCase()}? numbers or ids, comma-separated [all] : `);
+  if (!ans || /^a(ll)?$/i.test(ans)) return uniq;
+  const picked = ans.split(/[,\s]+/).filter(Boolean).map((p) => {
+    const n = Number(p);
+    return Number.isInteger(n) && n >= 1 && n <= uniq.length ? uniq[n - 1]! : p;
+  });
+  return [...new Set(picked.length ? picked : uniq)];
+}
+
 /** Ask which specific model to use for a subscription seat (claude/codex) via a numbered menu. */
 async function askModel(rl: Readline, label: string, suggestions: string[], bareId: string): Promise<string> {
   console.log(`\n  ${label} — which model?`);
@@ -188,7 +210,7 @@ const API_PROVIDERS: Record<string, ApiProvider> = {
 export async function runSetup(
   projectRoot: string,
   rl: Readline,
-  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn } = {},
+  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn; frugalMode?: boolean } = {},
 ): Promise<void> {
   console.log(`\n${C.bold("Set up your models.")} Checking what you're logged into…\n`);
   const status = await (opts.detect ?? defaultDetect)();
@@ -249,14 +271,30 @@ export async function runSetup(
   }
 
   // Cost policy: when the table mixes free and paid models, default to frugal — free models draft,
-  // paid models verify and improve.
+  // paid models verify and improve. `/frugal` makes that flow explicit and lets the user choose
+  // which selected free/paid models take each side of the policy.
   let frugal = false;
+  let frugalFreeModels: string[] | undefined;
+  let frugalPaidModels: string[] | undefined;
   if (models.some(isFreeModel) && models.some((m) => !isFreeModel(m))) {
-    const ans = await ask(rl, `  Frugal mode — draft with FREE models, use paid only to verify & improve? [Y/n] : `);
+    const ans = opts.frugalMode
+      ? "custom"
+      : await ask(rl, `  Frugal mode — draft with FREE models, use paid only to verify & improve? [Y/n/custom] : `);
     frugal = !/^n/i.test(ans);
+    if (frugal && (/^c/i.test(ans) || opts.frugalMode)) {
+      frugalFreeModels = await pickSubset(rl, "FREE drafting models", models.filter(isFreeModel));
+      frugalPaidModels = await pickSubset(rl, "PAID / subscription verifier models", models.filter((m) => !isFreeModel(m)));
+    }
+  } else if (opts.frugalMode) {
+    console.log(`\n${C.amber("Frugal mode needs at least one free model and one paid/subscription model.")}`);
+    console.log(`  ${C.dim("Pick Ollama or an OpenRouter :free model for drafting, plus Claude/Codex/API for verification.")}\n`);
+    return;
   }
 
-  const yaml = buildConfigYaml(models, providers, { frugal });
+  const buildOpts: BuildConfigOptions = { frugal };
+  if (frugalFreeModels) buildOpts.frugalFreeModels = frugalFreeModels;
+  if (frugalPaidModels) buildOpts.frugalPaidModels = frugalPaidModels;
+  const yaml = buildConfigYaml(models, providers, buildOpts);
   await mkdir(join(projectRoot, ".quorum"), { recursive: true });
   await writeFile(join(projectRoot, ".quorum", "config.yaml"), yaml, "utf8");
   const canBuild = models.some((m) => /^(claude|codex)(\/|$)/.test(m));
@@ -272,4 +310,13 @@ export async function runSetup(
     console.log(`  ${C.dim("These models plan, debate & verify. To also BUILD code autonomously, add Claude or Codex")}`);
     console.log(`  ${C.dim("(run /models, pick [1] or [2] and log in) — they're the executors. Type a goal to begin.")}\n`);
   }
+}
+
+export async function runFrugalSetup(
+  projectRoot: string,
+  rl: Readline,
+  opts: { detect?: DetectFn; fetchModels?: FetchModelsFn } = {},
+): Promise<void> {
+  console.log(`\n${C.bold("Frugal mode.")} Choose free models for drafting and paid/subscription models for judgement.`);
+  await runSetup(projectRoot, rl, { ...opts, frugalMode: true });
 }

@@ -14,6 +14,10 @@
 - Interactive shell `/` menu now supports terminal-popup discovery with ↑/↓ selection and Enter.
 - Dashboard now has working **New roundtable**, a left-side roundtable list, and active
   model/activity chips under **Activity**.
+- Frugal mode is now explicit: use `/frugal` in the terminal or the dashboard **Frugal** controls to
+  pick free drafting models and paid/subscription verifier models.
+- Terminal launch logo alignment tightened so the compact mark and ASCII `QUORUM` word sit cleanly
+  together.
 - Vague first messages ask a clarification question instead of starting the wrong goal; `/goal …`
   still starts directly.
 - Brainstorm turn-budget exhaustion soft-advances toward planning when possible instead of
