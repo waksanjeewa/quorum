@@ -37,6 +37,7 @@
   .installLabel{color:var(--brand);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
   .install{display:inline-flex;align-items:center;gap:10px;background:var(--panel);border:1px solid rgba(16,185,129,.45);border-radius:12px;padding:12px 16px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;max-width:100%;overflow-x:auto;white-space:nowrap;box-shadow:0 20px 70px -44px var(--brand)}
   .install .dollar{color:var(--muted)}
+  .installCaption{color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
   .pipeline{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin:44px auto 0;max-width:760px}
   .pipeline .step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;flex:1;min-width:150px}
   .pipeline .step b{display:block;font-size:14px}
@@ -121,8 +122,11 @@
   </div>
   <div class="installBlock">
     <div class="installLabel">One-line install</div>
+    <div class="installCaption">macOS / Linux</div>
     <div class="install"><span class="dollar">$</span> curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash</div>
-    <div style="color:var(--muted);font-size:13px">Bootstraps Node ≥20, npm, git, Python 3, pnpm, and Linux secret-tool when possible. <span style="color:var(--fg)">npm one-liner coming soon.</span></div>
+    <div class="installCaption">Windows PowerShell</div>
+    <div class="install"><span class="dollar">PS&gt;</span> irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex</div>
+    <div style="color:var(--muted);font-size:13px">Bootstraps Node ≥20, npm, git, Python 3, pnpm, Linux secret-tool, and Windows Credential Manager support when possible. <span style="color:var(--fg)">npm one-liner coming soon.</span></div>
   </div>
   <div class="pipeline">
     <div class="step"><b>🗣 Roundtable</b><span>proposer · critic · arbiter debate &amp; converge</span></div>
@@ -167,7 +171,7 @@
     <div class="card"><div class="ico">🗳️</div><h3>Real deliberation</h3><p>Proposer proposes, critic attacks (no early rubber-stamps), arbiter decides. Blind-judged, the roundtable beat a single model of the same kind.</p></div>
     <div class="card"><div class="ico">🔨</div><h3>It actually builds</h3><p>Plans become code: executors edit files in isolated git worktrees, run your acceptance checks, get reviewed, and merge — in parallel, across independent tasks.</p></div>
     <div class="card"><div class="ico">💸</div><h3>Frugal by default</h3><p>Free models (Ollama, OpenRouter :free) do the bulk drafting; your paid models are spent only on verifying and improving. Hard cost + time caps.</p></div>
-    <div class="card"><div class="ico">🔒</div><h3>Local-first &amp; private</h3><p>No server, no accounts, no telemetry. Prompts and transcripts stay on your machine; API keys live in your OS Keychain, never in a file.</p></div>
+    <div class="card"><div class="ico">🔒</div><h3>Local-first &amp; private</h3><p>No server, no accounts, no telemetry. Prompts and transcripts stay on your machine; API keys live in your OS credential store, never in a file.</p></div>
     <div class="card"><div class="ico">🧑‍💻</div><h3>You're at the table</h3><p>Watch the debate live in a branded shell or resilient web dashboard, switch roundtables, see active model activity, drop a message in mid-run, tweak models, refresh the same URL, and hit STOP.</p></div>
     <div class="card"><div class="ico">⏸️</div><h3>Resumable</h3><p>Everything is plain files on disk. Close your laptop, come back, <code>quorum resume</code> — it picks up exactly where it left off.</p></div>
     <div class="card"><div class="ico">🔁</div><h3>Bring your logins</h3><p>Reuses your existing Claude Code and Codex logins — no API keys required for the models you already pay for.</p></div>
@@ -206,7 +210,7 @@
       <tr><td>Quality</td><td class="o">the model checks its own work</td><td class="q qcol">a <i>different</i> model critiques &amp; reviews it</td></tr>
       <tr><td>Building code</td><td class="o">you copy-paste it back yourself</td><td class="q qcol">builds in isolated git worktrees, verified, merged</td></tr>
       <tr><td>Cost</td><td class="o">a paid model for everything</td><td class="q qcol">free models draft, paid only verify</td></tr>
-      <tr><td>Privacy</td><td class="o">cloud — your data leaves</td><td class="q qcol">local-first — keys stay in your Keychain</td></tr>
+      <tr><td>Privacy</td><td class="o">cloud — your data leaves</td><td class="q qcol">local-first — keys stay in your credential store</td></tr>
       <tr><td>Ownership</td><td class="o">locked to one vendor</td><td class="q qcol">mix any models; state is plain files you own</td></tr>
     </tbody>
   </table></div>
@@ -245,10 +249,10 @@
 
 <section id="how"><div class="wrap">
   <h2 class="title" id="get-started">Get started in a minute</h2>
-  <p class="sub">The installer can bootstrap Node ≥20, npm, git, Python 3, pnpm/Corepack, and Linux secret-tool. Reuse the model logins you already have.</p>
+  <p class="sub">The installers can bootstrap Node ≥20, npm, git, Python 3, pnpm/Corepack, Linux secret-tool, and Windows prerequisites through winget. Reuse the model logins you already have.</p>
   <div class="steps">
-    <div class="s"><div class="n">1</div><div><b>Install from source</b> <span style="color:var(--muted)">(npm one-liner coming soon)</span><br><code>curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash</code><br><span style="color:var(--muted);font-size:13px">or: <code>git clone https://github.com/waksanjeewa/quorum &amp;&amp; cd quorum &amp;&amp; ./install.sh</code></span></div></div>
-    <div class="s"><div class="n">2</div><div><b>Log in to models you want</b><br><code>claude login</code> &nbsp; <code>codex login</code> &nbsp; or paste an API key in setup (saved to your Keychain), or <code>ollama serve</code> for free local.</div></div>
+    <div class="s"><div class="n">1</div><div><b>Install from source</b> <span style="color:var(--muted)">(npm one-liner coming soon)</span><br><code>curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash</code><br><span style="color:var(--muted);font-size:13px">Windows: <code>irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex</code></span></div></div>
+    <div class="s"><div class="n">2</div><div><b>Log in to models you want</b><br><code>claude login</code> &nbsp; <code>codex login</code> &nbsp; or paste an API key in setup (saved to your OS credential store), or <code>ollama serve</code> for free local.</div></div>
     <div class="s"><div class="n">3</div><div><b>Go</b><br><code>quorum</code> opens an interactive shell — type <code>/</code> for the arrow-key command menu, pick models with <code>/models</code> or choose free drafts + paid verification with <code>/frugal</code>, then enter a goal like <i>“build me a CSV-to-JSON CLI.”</i> If the goal is unclear, Quorum asks a follow-up first; in a git repo it plans <b>and builds</b>.</div></div>
   </div>
   <div style="text-align:center;margin-top:34px">

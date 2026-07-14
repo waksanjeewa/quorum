@@ -13,6 +13,12 @@ warn() { printf 'warning: %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    die "native Windows installs use install.ps1. Run: powershell -ExecutionPolicy Bypass -File install.ps1"
+    ;;
+esac
+
 as_root() {
   if [ "$(id -u)" -eq 0 ]; then
     "$@"
@@ -163,7 +169,7 @@ say "  pnpm $(pnpm -v)"
 say "  git $(git --version | sed 's/^git version //')"
 say "  python $(python3 --version | sed 's/^Python //')"
 if have secret-tool; then
-  say "  secret-tool available (Linux Keychain support)"
+  say "  secret-tool available (Linux credential-store support)"
 fi
 
 if [ -d "$DIR/.git" ]; then

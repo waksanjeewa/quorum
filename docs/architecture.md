@@ -94,6 +94,6 @@ for judgement (verifying, catching flaws, deciding). Frugal mode encodes exactly
 
 - Local only: daemon binds `127.0.0.1`, per-run bearer token; the dashboard is served locally and
   keeps all session/agent activity on your machine.
-- Credentials: existing CLI logins are reused as-is; API keys live in env vars or the OS Keychain —
-  **never in files**.
+- Credentials: existing CLI logins are reused as-is; API keys live in env vars or the OS credential
+  store — macOS Keychain, Linux libsecret, or Windows Credential Manager — **never in project files**.
 - Building: isolated worktrees, acceptance-gated merges, no pushes/deploys, instant kill switch.

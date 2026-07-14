@@ -25,7 +25,7 @@ A seat's `chain` is a **failover list**, tried in order. Ids:
 | `ollama/<model>` | `ollama/llama3` | a local Ollama model — free, never rate-limited |
 | `<provider>/<model>` | `openrouter/nousresearch/hermes-3-llama-3.1-405b:free` | any OpenAI-compatible provider from your `providers:` map |
 | built-in aggregators | `openrouter/…`, `groq/…`, `together/…`, `fireworks/…`, `deepinfra/…` | one key unlocks many models (no `providers:` block needed) |
-| built-in APIs | `openai-api/gpt-5.5`, `anthropic-api/claude-opus-4-8`, `gemini-api/gemini-2.5-pro` | direct API access (key from env/Keychain) |
+| built-in APIs | `openai-api/gpt-5.5`, `anthropic-api/claude-opus-4-8`, `gemini-api/gemini-2.5-pro` | direct API access (key from env/credential store) |
 
 Models ending in `:free` cost nothing (OpenRouter's free tier). Free models can deliberate but not
 execute; **only `claude`/`codex` seats can build**.
@@ -79,7 +79,7 @@ budgets:
 providers:
   openrouter:
     base_url: "https://openrouter.ai/api/v1"
-    key_env: OPENROUTER_API_KEY     # resolved from env or your OS Keychain
+    key_env: OPENROUTER_API_KEY     # resolved from env or your OS credential store
 ```
 
 Notes:
@@ -88,7 +88,8 @@ Notes:
   quota buys judgement, not volume.
 - **Failover** is per-seat: when a model hits its usage limit, the next in the chain picks up the
   same seat mid-conversation. Sessions never die.
-- Keys are **never stored in files** — env vars or the OS Keychain (`/models` handles this).
+- Keys are **never stored in project files** — use env vars or the OS credential store (`/models`
+  handles this): macOS Keychain, Linux libsecret/`secret-tool`, or Windows Credential Manager.
 
 ## Budgets & safety
 

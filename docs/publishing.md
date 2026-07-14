@@ -10,7 +10,8 @@ packages needed by consumers. This is the checklist to make it installable by th
 - [ ] Scan tracked files for local home-directory paths, `.quorum` session artifacts, `daemon.json`,
       `.env`, private keys, PEMs, and remove anything personal
 - [ ] Confirm public-facing docs and brand assets use the Quorum palette only (no purple/violet/magenta/indigo)
-- [ ] Smoke-check the installer syntax with `bash -n install.sh`
+- [ ] Smoke-check the installer syntax with `bash -n install.sh` and, on a machine with PowerShell,
+      `pwsh -NoProfile -NonInteractive -File install.ps1 -SkipSystemDeps`
 - [ ] Bump the version in `packages/cli/package.json` when publishing a new npm package (+ add a `CHANGELOG.md` entry)
 - [ ] Verify the bundle is self-contained:
   ```bash
@@ -32,7 +33,8 @@ If it is still private:
 ```bash
 gh repo edit waksanjeewa/quorum --visibility public --accept-visibility-change-consequences
 ```
-Once public, the `curl … install.sh | bash` source install works for everyone.
+Once public, the `curl … install.sh | bash` source install works for macOS/Linux, and
+`irm … install.ps1 | iex` works for Windows PowerShell users.
 
 ## Publish to npm (the true one-liner)
 

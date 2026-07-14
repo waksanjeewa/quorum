@@ -6,10 +6,11 @@ Quorum is local-first: everything runs on your machine, your credentials never l
 
 | Requirement | Why | Install |
 |---|---|---|
-| **Node.js ≥ 20** + npm | Quorum runs on Node and builds the CLI bundle | the installer tries Homebrew/apt/dnf/yum/pacman/apk first |
+| **Node.js ≥ 20** + npm | Quorum runs on Node and builds the CLI bundle | installer tries Homebrew/apt/dnf/yum/pacman/apk or Windows `winget` |
 | **git** | required for autonomous *building* (isolated worktrees + merges) | installed by the source installer when possible |
 | **Python 3** | common project/acceptance-test runtime for generated code | installed by the source installer when possible |
 | **Linux `secret-tool`** | optional secure API-key storage on Linux | installed as `libsecret-tools`/`libsecret` when possible |
+| **Windows Credential Manager** | secure API-key storage on Windows | built into Windows; Quorum uses it via PowerShell |
 | At least **one model** (below) | someone has to sit at the table | — |
 
 **Models — bring any of these (mix freely):**
@@ -28,17 +29,29 @@ Quorum is local-first: everything runs on your machine, your credentials never l
 
 ## 2. Install
 
+macOS / Linux:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
 ```
 (or `git clone https://github.com/waksanjeewa/quorum && cd quorum && ./install.sh`)
 
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex
+```
+
 The installer bootstraps the local toolchain where it can: Node.js ≥20, npm, git, Python 3,
-pnpm/Corepack, and Linux Keychain support (`secret-tool`). If you prefer to install system packages
-yourself first, opt out of package-manager changes:
+pnpm/Corepack, Linux credential-store support (`secret-tool`), and Windows prerequisites through `winget`.
+If you prefer to install system packages yourself first, opt out of package-manager changes:
 
 ```bash
 QUORUM_SKIP_SYSTEM_DEPS=1 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+```
+
+```powershell
+$env:QUORUM_SKIP_SYSTEM_DEPS="1"; irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex
 ```
 
 Then check your machine:
@@ -60,9 +73,10 @@ The first run drops you straight into the model picker:
 - Logged-in tools (Claude, Codex, Ollama) are detected automatically — just pick their numbers.
 - When you pick **Ollama**, Quorum lists the local models from `ollama serve` / `ollama list`;
   if Ollama is offline, you can still type any model name you already pulled.
-- For API providers (OpenRouter/OpenAI/Anthropic), paste your key once — it's stored in your
-  **OS Keychain**, never in a file — then pick the exact model from the live catalog
-  (free models listed first and flagged).
+- For API providers (OpenRouter/OpenAI/Anthropic), paste your key once — it is stored in your OS
+  credential store (macOS Keychain, Linux libsecret, or Windows Credential Manager), never in a
+  project file — then pick the exact model from the live catalog (free models listed first and
+  flagged).
 - If you mix free and paid models, Quorum offers **frugal mode**: free models do the bulk
   drafting, paid models only verify and improve.
 - Want to choose those deliberately? Run `/frugal`, or use the dashboard **Frugal** button /

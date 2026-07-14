@@ -11,8 +11,16 @@
 
 ## Install
 
+macOS / Linux:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex
 ```
 
 Then run:
@@ -54,7 +62,7 @@ several models work **together** on one goal — and keeps going when one runs o
 | **Quality** | the model checks its own work | a *different* model critiques & reviews it |
 | **Building code** | you copy-paste it back yourself | builds in isolated git worktrees, verified, merged |
 | **Cost** | a paid model for everything | free models draft, paid models only verify |
-| **Privacy** | cloud — your data leaves | local-first — keys stay in your OS Keychain |
+| **Privacy** | cloud — your data leaves | local-first — keys stay in your OS credential store |
 | **Ownership** | locked to one vendor | mix any models; state is plain files you own |
 
 ## How it works
@@ -86,16 +94,26 @@ Goal → Brainstorm → Plan → Decompose → Build → Verify + Review → Mer
 **Install from source:**
 
 ```bash
+# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
 # or: git clone https://github.com/waksanjeewa/quorum && cd quorum && ./install.sh
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex
+```
+
 The installer checks and, where possible, installs the local prerequisites with your system package
-manager: Node.js ≥20, npm, git, Python 3, pnpm/Corepack, and Linux `secret-tool` for secure API-key
-storage. To only check prerequisites and skip system package installs, run:
+manager: Node.js ≥20, npm, git, Python 3, pnpm/Corepack, Linux `secret-tool`, or Windows
+Credential Manager support. To only check prerequisites and skip system package installs, run:
 
 ```bash
 QUORUM_SKIP_SYSTEM_DEPS=1 curl -fsSL https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.sh | bash
+```
+
+```powershell
+$env:QUORUM_SKIP_SYSTEM_DEPS="1"; irm https://raw.githubusercontent.com/waksanjeewa/quorum/main/install.ps1 | iex
 ```
 
 *(An npm one-liner is coming. Note: the bare name `quorum` is already taken on npm, so the published
@@ -115,7 +133,7 @@ codex login       # for a `codex` seat (ChatGPT Plus/Pro)
 
 ```
 $ quorum
-  ◆ quorum ❯ /models       ← pick your models: log in, or paste an API key (saved to your Keychain)
+  ◆ quorum ❯ /models       ← pick your models: log in, or paste an API key (saved securely)
   ◆ quorum ❯ /frugal       ← choose free draft models + paid verifier models
   ◆ quorum ❯ build me a CLI that converts CSV to JSON
   … streams live — type to add a message, /pause, /stop …
@@ -161,7 +179,8 @@ providers:
   gateway, or a direct API.
 - `ollama/<model>` is the never-offline free fallback.
 
-API keys come from environment variables (or your OS Keychain) only — never stored in files.
+API keys come from environment variables or your OS credential store only — macOS Keychain, Linux
+libsecret/`secret-tool`, or Windows Credential Manager. They are never stored in project files.
 
 ### One key, many models (skip multiple subscriptions)
 
